@@ -83,3 +83,20 @@ def test_build_thresholds_no_fit_uses_encoder_default(monkeypatch):
     """fit 关闭时回退为编码器默认阈值。"""
     thr = _build_thresholds(EXAMPLES, ["无关问题"], auto_fit=False, encoder=_FakeEncoder())
     assert set(thr.keys()) == {"langchain", "general"}
+
+
+class _NoneThresholdEncoder:
+    """score_threshold 为 None 的真实编码器形态。"""
+
+    score_threshold = None
+
+    def __call__(self, docs):
+        return [[1.0, 0.0] for _ in docs]
+
+
+def test_build_thresholds_no_fit_handles_none_threshold():
+    """编码器 score_threshold 为 None 时回退 0.5，而不是抛 TypeError。"""
+    thr = _build_thresholds(
+        EXAMPLES, ["无关问题"], auto_fit=False, encoder=_NoneThresholdEncoder()
+    )
+    assert thr == {"langchain": 0.5, "general": 0.5}

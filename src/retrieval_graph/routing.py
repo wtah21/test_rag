@@ -163,7 +163,7 @@ def _build_thresholds(
         {label: threshold}。
     """
     if not auto_fit:
-        default = float(getattr(encoder, "score_threshold", 0.5))
+        default = float(getattr(encoder, "score_threshold", None) or 0.5)
         return {label: default for label in examples}
 
     examples_key = tuple((label, tuple(utts)) for label, utts in examples.items())
