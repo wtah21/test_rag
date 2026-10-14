@@ -53,19 +53,24 @@ def _cosine_scores(query_vec: list[float], mat: np.ndarray) -> np.ndarray:
     return (mat @ q) / (m_norm * q_norm)
 
 
-def _semantic_route(
+def _semantic_match(
     question: str,
-    examples: dict[str, list[str]],
+    labels: tuple[str, ...],
+    utt_vecs: np.ndarray,
     thresholds: dict[str, float],
     *,
     encoder,
     top_k: int = 5,
 ) -> Router | None:
-    """第二层语义路由：检索 top_k 示例问题，按标签求平均分，超阈值则采用。
+    """第二层语义匹配：检索 top_k 示例问题，按标签求平均分，超阈值则采用。
+
+    示例问题的向量由调用方预先算好（见 _get_example_vectors 的模块级缓存），
+    这里只对 query 编码一次。
 
     Args:
         question: 用户原始提问。
-        examples: 各标签的示例问题。
+        labels: 与 utt_vecs 逐行对应的示例问题标签。
+        utt_vecs: 示例问题的向量矩阵（行数 == len(labels)）。
         thresholds: 各标签的阈值（由 fit 得到）。
         encoder: 可将 List[str] 编码为向量的对象（BGE-M3）。
         top_k: 检索的示例问题条数。
@@ -73,18 +78,16 @@ def _semantic_route(
     Returns:
         平均分最高且超过该标签阈值时返回 Router(type=该标签)，否则 None。
     """
-    pairs = [(label, u) for label, utts in examples.items() for u in utts]
-    if not pairs or not question:
+    if not labels or not question:
         return None
 
-    utt_vecs = np.asarray(encoder([u for _, u in pairs]), dtype=float)
     q_vec = encoder([question])[0]
     sims = _cosine_scores(q_vec, utt_vecs)
 
     order = np.argsort(-sims, kind="stable")[:top_k]
     bucket: dict[str, list[float]] = {}
     for i in order:
-        label = pairs[int(i)][0]
+        label = labels[int(i)]
         bucket.setdefault(label, []).append(float(sims[int(i)]))
 
     avg = {label: sum(v) / len(v) for label, v in bucket.items()}
@@ -151,7 +154,7 @@ def _build_thresholds(
     negatives: list[str],
     *,
     auto_fit: bool,
-    encoder,
+    encoder=None,
 ) -> dict[str, float]:
     """获取各标签的阈值：auto_fit 时用 semantic-router 的 fit 自动调优。
 
@@ -159,7 +162,7 @@ def _build_thresholds(
         examples: 各标签的示例问题。
         negatives: 不属于任何标签的负样本问题（y 记为 None）。
         auto_fit: 是否用 fit 调优阈值。
-        encoder: DenseEncoder 实例（关闭 fit 时取其默认阈值）。
+        encoder: DenseEncoder 实例（关闭 fit 时取其默认阈值；auto_fit=True 时不使用，可省略）。
 
     Returns:
         {label: threshold}。
@@ -174,6 +177,42 @@ def _build_thresholds(
     y = [label for label, utts in examples.items() for _ in utts] + [None] * len(negatives)
     sr.fit(X=X, y=y)
     return {str(k): float(v) for k, v in sr.get_thresholds().items()}
+
+
+def _examples_key(examples: dict[str, list[str]]) -> tuple:
+    """把示例问题转为可哈希的缓存键。"""
+    return tuple((label, tuple(utts)) for label, utts in examples.items())
+
+
+@lru_cache(maxsize=8)
+def _get_thresholds(
+    examples_key: tuple, negatives_key: tuple, auto_fit: bool
+) -> dict[str, float]:
+    """构建（并缓存）各标签阈值：模块级单例，仅首次调用执行 fit。"""
+    examples = {label: list(utts) for label, utts in examples_key}
+    return _build_thresholds(
+        examples,
+        list(negatives_key),
+        auto_fit=auto_fit,
+        encoder=None if auto_fit else _get_bge_m3_encoder(),
+    )
+
+
+@lru_cache(maxsize=8)
+def _get_example_vectors(examples_key: tuple) -> tuple[tuple[str, ...], np.ndarray]:
+    """构建（并缓存）示例问题的标签与向量矩阵：模块级单例，仅首次编码。
+
+    Args:
+        examples_key: ((label, (utterance, ...)), ...) 形式的示例问题。
+
+    Returns:
+        (labels, utt_vecs)：与示例问题逐行对应的标签元组与向量矩阵。
+    """
+    pairs = [(label, u) for label, utts in examples_key for u in utts]
+    if not pairs:
+        return (), np.zeros((0, 0))
+    vecs = np.asarray(_get_bge_m3_encoder()([u for _, u in pairs]), dtype=float)
+    return tuple(label for label, _ in pairs), vecs
 
 
 _JEV_TYPES = ("langchain", "more-info", "general")
@@ -260,11 +299,11 @@ async def resolve_route(
         return hit, "rule"
 
     if examples:
-        thresholds = _build_thresholds(
-            examples, negatives, auto_fit=auto_fit, encoder=encoder
-        )
-        sem = _semantic_route(
-            question, examples, thresholds, encoder=encoder, top_k=top_k
+        key = _examples_key(examples)
+        thresholds = _get_thresholds(key, tuple(negatives), auto_fit)
+        labels, utt_vecs = _get_example_vectors(key)
+        sem = _semantic_match(
+            question, labels, utt_vecs, thresholds, encoder=encoder, top_k=top_k
         )
         if sem is not None:
             return sem, "semantic"
