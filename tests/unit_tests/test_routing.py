@@ -1,5 +1,8 @@
 """三层分层路由的单元测试。"""
 
+import asyncio
+
+from retrieval_graph import routing
 from retrieval_graph.routing import (
     _build_thresholds,
     _parse_jev_output,
@@ -119,3 +122,44 @@ def test_parse_jev_output_invalid_falls_back_general():
 
 def test_parse_jev_output_illegal_type_falls_back_general():
     assert _parse_jev_output('{"type": "unknown"}') == {"type": "general"}
+
+
+def test_resolve_route_rule_short_circuits(monkeypatch):
+    """规则命中时不再调用语义层与 JEV。"""
+    called = {"semantic": False, "jev": False}
+
+    def _fake_semantic(*a, **k):
+        called["semantic"] = True
+        return None
+
+    async def _fake_jev(*a, **k):
+        called["jev"] = True
+        return {"type": "general"}
+
+    monkeypatch.setattr(routing, "_semantic_route", _fake_semantic)
+    monkeypatch.setattr(routing, "_jev_route", _fake_jev)
+    out = asyncio.run(
+        routing.resolve_route(
+            "怎么用 LangGraph 建图？", "", examples={}, negatives=[], top_k=5,
+            auto_fit=False, encoder=_FakeEncoder(), keywords=KEYWORDS, jev_prompt="p",
+        )
+    )
+    assert out == ({"type": "langchain"}, "rule")
+    assert called == {"semantic": False, "jev": False}
+
+
+def test_resolve_route_falls_back_to_jev(monkeypatch):
+    """规则与语义都无结论时调用 JEV。"""
+    monkeypatch.setattr(routing, "_semantic_route", lambda *a, **k: None)
+
+    async def _fake_jev(*a, **k):
+        return {"type": "more-info"}
+
+    monkeypatch.setattr(routing, "_jev_route", _fake_jev)
+    out = asyncio.run(
+        routing.resolve_route(
+            "这个不行", "", examples={}, negatives=[], top_k=5,
+            auto_fit=False, encoder=_FakeEncoder(), keywords=KEYWORDS, jev_prompt="p",
+        )
+    )
+    assert out == ({"type": "more-info"}, "jev")

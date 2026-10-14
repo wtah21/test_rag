@@ -237,3 +237,36 @@ async def _jev_route(question: str, history: str, prompt: str) -> Router:
         logger.warning("JEV 决策模型调用失败，兜底 general", exc_info=True)
         return Router(type="general")
     return _parse_jev_output(content)
+
+
+async def resolve_route(
+    question: str,
+    history: str,
+    *,
+    examples: dict[str, list[str]],
+    negatives: list[str],
+    top_k: int,
+    auto_fit: bool,
+    encoder,
+    keywords: list[str],
+    jev_prompt: str,
+) -> tuple[Router, str]:
+    """级联执行三层路由，返回 (Router, 命中层)。
+
+    命中层取值：rule / semantic / jev，便于日志与评估。
+    """
+    hit = _rule_route(question, keywords)
+    if hit is not None:
+        return hit, "rule"
+
+    if examples:
+        thresholds = _build_thresholds(
+            examples, negatives, auto_fit=auto_fit, encoder=encoder
+        )
+        sem = _semantic_route(
+            question, examples, thresholds, encoder=encoder, top_k=top_k
+        )
+        if sem is not None:
+            return sem, "semantic"
+
+    return await _jev_route(question, history, jev_prompt), "jev"
