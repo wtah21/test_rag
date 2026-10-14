@@ -39,9 +39,9 @@ class AgentConfiguration(BaseConfiguration):
     # 提示词
 
     router_system_prompt: str = field(
-        default=prompts.ROUTER_SYSTEM_PROMPT,
+        default=prompts.JEV_ROUTER_SYSTEM_PROMPT,
         metadata={
-            "description": "用于对用户问题进行分类并将其路由到正确节点的系统提示词。"
+            "description": "三层路由中第三层 JEV 决策模型的分类提示词（前两层无法确定时使用）。"
         },
     )
 
