@@ -2,6 +2,7 @@
 
 from retrieval_graph.routing import (
     _build_thresholds,
+    _parse_jev_output,
     _rule_route,
     _semantic_route,
 )
@@ -100,3 +101,21 @@ def test_build_thresholds_no_fit_handles_none_threshold():
         EXAMPLES, ["无关问题"], auto_fit=False, encoder=_NoneThresholdEncoder()
     )
     assert thr == {"langchain": 0.5, "general": 0.5}
+
+
+def test_parse_jev_output_plain_json():
+    assert _parse_jev_output('{"type": "langchain"}') == {"type": "langchain"}
+
+
+def test_parse_jev_output_with_text_wrapper():
+    assert _parse_jev_output('判断如下：{"type": "more-info"} 完毕') == {
+        "type": "more-info"
+    }
+
+
+def test_parse_jev_output_invalid_falls_back_general():
+    assert _parse_jev_output("我不知道") == {"type": "general"}
+
+
+def test_parse_jev_output_illegal_type_falls_back_general():
+    assert _parse_jev_output('{"type": "unknown"}') == {"type": "general"}

@@ -7,7 +7,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 import re
 from functools import lru_cache
 
@@ -172,3 +174,66 @@ def _build_thresholds(
     y = [label for label, utts in examples.items() for _ in utts] + [None] * len(negatives)
     sr.fit(X=X, y=y)
     return {str(k): float(v) for k, v in sr.get_thresholds().items()}
+
+
+_JEV_TYPES = ("langchain", "more-info", "general")
+
+
+def _parse_jev_output(text: str) -> Router:
+    """解析 JEV 决策模型的输出文本，提取 type；非法时兜底 general。
+
+    Args:
+        text: 模型返回的原始文本（应含 {"type": "..."}）。
+
+    Returns:
+        Router(type=...)。
+    """
+    match = re.search(r"\{.*\}", text or "", re.DOTALL)
+    if match:
+        try:
+            data = json.loads(match.group(0))
+            t = str(data.get("type", "")).strip()
+            if t in _JEV_TYPES:
+                return Router(type=t)
+        except (ValueError, TypeError):
+            pass
+    logger.warning("JEV 输出无法解析，兜底 general：%r", text)
+    return Router(type="general")
+
+
+@lru_cache(maxsize=1)
+def _get_jev_model():
+    """构造 JEV 决策模型（OpenAI 兼容端点，配置读取自环境变量）。"""
+    from langchain_openai import ChatOpenAI
+
+    return ChatOpenAI(
+        model=os.environ.get("JEV_MODEL", "typesafe/jev-latest"),
+        api_key=os.environ.get("JEV_API_KEY", ""),
+        base_url=os.environ.get("JEV_BASE_URL", "https://api.typesafe.ai/v1"),
+        temperature=0,
+    )
+
+
+async def _jev_route(question: str, history: str, prompt: str) -> Router:
+    """第三层 JEV 决策：前两层无结论时由决策模型兜底分类。
+
+    Args:
+        question: 用户原始提问。
+        history: 最近若干轮对话的纯文本摘要（可为空）。
+        prompt: JEV 路由系统提示词。
+
+    Returns:
+        Router(type=...)；调用失败或输出非法时兜底 general。
+    """
+    user_content = f"对话上下文：\n{history}\n\n用户最新提问：\n{question}"
+    messages = [
+        {"role": "system", "content": prompt},
+        {"role": "human", "content": user_content},
+    ]
+    try:
+        resp = await _get_jev_model().ainvoke(messages)
+        content = resp.content if isinstance(resp.content, str) else str(resp.content)
+    except Exception:  # noqa: BLE001
+        logger.warning("JEV 决策模型调用失败，兜底 general", exc_info=True)
+        return Router(type="general")
+    return _parse_jev_output(content)
