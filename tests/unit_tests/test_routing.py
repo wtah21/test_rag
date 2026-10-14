@@ -3,6 +3,7 @@
 import asyncio
 
 import numpy as np
+import pytest
 
 from retrieval_graph import routing
 from retrieval_graph.routing import (
@@ -13,6 +14,18 @@ from retrieval_graph.routing import (
 )
 
 KEYWORDS = ["langchain", "langgraph", "agent", "memory", "rag"]
+
+
+@pytest.fixture(autouse=True)
+def _clear_routing_caches():
+    """隔离模块级 lru_cache，避免跨用例污染。"""
+    routing._get_thresholds.cache_clear()
+    routing._get_example_vectors.cache_clear()
+    routing._get_semantic_router.cache_clear()
+    yield
+    routing._get_thresholds.cache_clear()
+    routing._get_example_vectors.cache_clear()
+    routing._get_semantic_router.cache_clear()
 
 
 def test_rule_route_hits_keyword():
@@ -153,7 +166,7 @@ def test_resolve_route_rule_short_circuits(monkeypatch):
     out = asyncio.run(
         routing.resolve_route(
             "怎么用 LangGraph 建图？", "", examples={}, negatives=[], top_k=5,
-            auto_fit=False, encoder=_FakeEncoder(), keywords=KEYWORDS, jev_prompt="p",
+            auto_fit=False, keywords=KEYWORDS, jev_prompt="p",
         )
     )
     assert out == ({"type": "langchain"}, "rule")
@@ -171,7 +184,7 @@ def test_resolve_route_falls_back_to_jev(monkeypatch):
     out = asyncio.run(
         routing.resolve_route(
             "这个不行", "", examples={}, negatives=[], top_k=5,
-            auto_fit=False, encoder=_FakeEncoder(), keywords=KEYWORDS, jev_prompt="p",
+            auto_fit=False, keywords=KEYWORDS, jev_prompt="p",
         )
     )
     assert out == ({"type": "more-info"}, "jev")
@@ -189,7 +202,6 @@ def test_get_thresholds_cached(monkeypatch):
             return {"langchain": 0.2, "general": 0.2}
 
     monkeypatch.setattr(routing, "_get_semantic_router", lambda *a, **k: _FakeSR())
-    routing._get_thresholds.cache_clear()
     key = (("langchain", ("langchain-utter",)), ("general", ("general-utter",)))
     assert routing._get_thresholds(key, ("n",), True) == {
         "langchain": 0.2,
@@ -212,8 +224,42 @@ def test_get_example_vectors_cached(monkeypatch):
             return [[1.0, 0.0] for _ in docs]
 
     monkeypatch.setattr(routing, "_get_bge_m3_encoder", lambda: _CountingEncoder())
-    routing._get_example_vectors.cache_clear()
     key = (("langchain", ("langchain-utter",)), ("general", ("general-utter",)))
     routing._get_example_vectors(key)
     routing._get_example_vectors(key)
     assert calls["n"] == 1
+
+
+def test_resolve_route_uses_cached_semantic_artifacts(monkeypatch):
+    """examples 非空时走语义层；阈值（fit）与示例编码只构建一次。"""
+    calls = {"fit": 0, "encode": 0}
+
+    class _FakeSR:
+        def fit(self, X, y):
+            calls["fit"] += 1
+
+        def get_thresholds(self):
+            return {"langchain": 0.5, "general": 0.5}
+
+    class _CountingEncoder:
+        def __call__(self, docs):
+            calls["encode"] += 1
+            return [[1.0, 0.0] if "lang" in d else [0.0, 1.0] for d in docs]
+
+    monkeypatch.setattr(routing, "_get_semantic_router", lambda *a, **k: _FakeSR())
+    monkeypatch.setattr(routing, "_get_bge_m3_encoder", lambda: _CountingEncoder())
+
+    async def _fake_jev(*a, **k):
+        return {"type": "general"}
+
+    monkeypatch.setattr(routing, "_jev_route", _fake_jev)
+    for _ in range(2):
+        out = asyncio.run(
+            routing.resolve_route(
+                "q-langchain", "", examples=EXAMPLES, negatives=["n"], top_k=5,
+                auto_fit=True, keywords=[], jev_prompt="p",
+            )
+        )
+        assert out == ({"type": "langchain"}, "semantic")
+    assert calls["fit"] == 1
+    assert calls["encode"] == 3  # 1 次建示例索引 + 2 次 query 编码

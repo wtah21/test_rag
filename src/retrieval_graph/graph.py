@@ -55,7 +55,7 @@ from langgraph.types import interrupt
 
 from retrieval_graph import memory
 from retrieval_graph.configuration import AgentConfiguration
-from retrieval_graph.routing import _get_bge_m3_encoder, resolve_route
+from retrieval_graph.routing import resolve_route
 from retrieval_graph.state import AgentState, InputState, Router
 from shared.hybrid_retrieval import hybrid_search
 from shared.utils import format_docs, load_chat_model
@@ -134,7 +134,6 @@ async def analyze_and_route_query(
             negatives=configuration.routing_semantic_negatives,
             top_k=configuration.routing_semantic_top_k,
             auto_fit=configuration.routing_semantic_auto_fit,
-            encoder=_get_bge_m3_encoder(),
             keywords=configuration.routing_rule_keywords,
             jev_prompt=configuration.router_system_prompt,
         )

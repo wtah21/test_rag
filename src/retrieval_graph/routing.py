@@ -162,7 +162,7 @@ def _build_thresholds(
         examples: 各标签的示例问题。
         negatives: 不属于任何标签的负样本问题（y 记为 None）。
         auto_fit: 是否用 fit 调优阈值。
-        encoder: DenseEncoder 实例（关闭 fit 时取其默认阈值；auto_fit=True 时不使用，可省略）。
+        encoder: DenseEncoder 实例（关闭 fit 时取其默认阈值；auto_fit=False 时必须传入，auto_fit=True 时不使用、可省略）。
 
     Returns:
         {label: threshold}。
@@ -286,12 +286,13 @@ async def resolve_route(
     negatives: list[str],
     top_k: int,
     auto_fit: bool,
-    encoder,
     keywords: list[str],
     jev_prompt: str,
 ) -> tuple[Router, str]:
     """级联执行三层路由，返回 (Router, 命中层)。
 
+    编码器统一取模块级单例 _get_bge_m3_encoder()（示例向量与阈值需按
+    examples_key 缓存，编码器不可哈希、不能作为缓存键）。
     命中层取值：rule / semantic / jev，便于日志与评估。
     """
     hit = _rule_route(question, keywords)
@@ -299,6 +300,7 @@ async def resolve_route(
         return hit, "rule"
 
     if examples:
+        encoder = _get_bge_m3_encoder()
         key = _examples_key(examples)
         thresholds = _get_thresholds(key, tuple(negatives), auto_fit)
         labels, utt_vecs = _get_example_vectors(key)
