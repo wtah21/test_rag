@@ -87,7 +87,8 @@ class AgentState(InputState):
     仅用稠密向量（避免 RRF 挤掉稠密路好文档）。"""
     documents: list[Document] = field(default_factory=list)
     """由检索器填充。这是 agent 可以引用的文档列表（retrieve_context 单 query
-    混合检索后截断写入前 context_top_k 条；节点串行写入故直接覆盖而非合并）。
+    混合检索后按 rerank_candidates 取 RRF 候选并重排，写入前 rerank_top_n 条；
+    关闭重排时为 context_top_k 条；节点串行写入故直接覆盖而非合并）。
     grade / respond 基于它工作。"""
     grade: Literal["good", "bad"] = "good"
     """grade_documents 节点对当前检索文档的评判结果（good=可直接回答，bad=需要重新检索）。"""
