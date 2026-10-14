@@ -40,3 +40,21 @@ def test_zhipu_rerank_falls_back_on_error():
 def test_zhipu_rerank_empty_input():
     """空文档列表直接返回空。"""
     assert zhipu_rerank("q", [], top_n=4) == []
+
+
+def test_hybrid_search_uses_rerank(monkeypatch):
+    """rerank=True 时最终结果来自 zhipu_rerank。"""
+    from shared import hybrid_retrieval as hr
+
+    cand = [
+        Document(page_content=f"d{i}", metadata={"rrf_score": 1.0 - i * 0.1})
+        for i in range(3)
+    ]
+    monkeypatch.setattr(hr, "_rrf_candidates", lambda *a, **k: cand)
+    monkeypatch.setattr(
+        hr, "zhipu_rerank", lambda q, docs, top_n: docs[:top_n][::-1]
+    )
+    out = hr.hybrid_search(
+        "q", rerank=True, rerank_top_n=2, rerank_candidates=3
+    )
+    assert [d.page_content for d in out] == ["d1", "d0"]

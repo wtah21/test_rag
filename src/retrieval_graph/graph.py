@@ -432,6 +432,9 @@ async def retrieve_context(
         final_top_k=configuration.context_top_k,
         sparse_query=sparse_text,
         enable_sparse=use_sparse,
+        rerank=configuration.rerank_enabled,
+        rerank_top_n=configuration.rerank_top_n,
+        rerank_candidates=configuration.rerank_candidates,
     )
     return {
         "documents": documents,
