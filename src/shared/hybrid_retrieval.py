@@ -212,9 +212,13 @@ def hybrid_search(
         sparse_query: BM25（稀疏）检索用查询文本；为 None 时与 query 相同。
         enable_sparse: 是否启用稀疏路；False 时仅稠密检索（跳过 RRF 融合，
             结果即稠密路 top final_top_k）。
+        rerank: 是否在 RRF 融合后用 cross-encoder 重排；False 时行为不变。
+        rerank_top_n: 重排后返回的文档数。
+        rerank_candidates: 送入重排的 RRF 候选数（>= rerank_top_n）。
 
     Returns:
-        按融合分数降序排列的 Document 列表（正文 + 元数据）。
+        按相关性降序排列的 Document 列表（正文 + 元数据）；开启重排时返回
+        rerank_top_n 条，否则返回 final_top_k 条。
     """
     from shared.retrieval import make_text_encoder
 
