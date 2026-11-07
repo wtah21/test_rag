@@ -1,60 +1,40 @@
-"""Define the configurable parameters for the agent."""
+"""定义 agent 的可配置参数。"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
-from typing import Annotated, Any, Literal, Optional, Type, TypeVar
+from typing import Annotated, Optional, Type, TypeVar
 
 from langchain_core.runnables import RunnableConfig, ensure_config
 
 
 @dataclass(kw_only=True)
 class BaseConfiguration:
-    """Configuration class for indexing and retrieval operations.
+    """检索流程的公共配置类。
 
-    This class defines the parameters needed for configuring the indexing and
-    retrieval processes, including embedding model selection, retriever provider choice, and search parameters.
+    定义检索链路共用的参数（当前为嵌入模型选择）。
     """
 
     embedding_model: Annotated[
         str,
         {"__template_metadata__": {"kind": "embeddings"}},
     ] = field(
-        default="openai/text-embedding-3-small",
-        metadata={
-            "description": "Name of the embedding model to use. Must be a valid embedding model name."
-        },
-    )
-
-    retriever_provider: Annotated[
-        Literal["elastic-local", "elastic", "pinecone", "mongodb"],
-        {"__template_metadata__": {"kind": "retriever"}},
-    ] = field(
-        default="elastic-local",
-        metadata={
-            "description": "The vector store provider to use for retrieval. Options are 'elastic', 'pinecone', or 'mongodb'."
-        },
-    )
-
-    search_kwargs: dict[str, Any] = field(
-        default_factory=dict,
-        metadata={
-            "description": "Additional keyword arguments to pass to the search function of the retriever."
-        },
+        default="siliconflow/BAAI/bge-m3",
+        metadata={"description": "要使用的嵌入模型名称。必须是有效的嵌入模型名称。"},
     )
 
     @classmethod
     def from_runnable_config(
         cls: Type[T], config: Optional[RunnableConfig] = None
     ) -> T:
-        """Create an IndexConfiguration instance from a RunnableConfig object.
+        """根据 RunnableConfig 对象创建配置实例。
 
-        Args:
-            cls (Type[T]): The class itself.
-            config (Optional[RunnableConfig]): The configuration object to use.
+        参数:
+        cls (Type[T]): 类本身。
+        config (Optional[RunnableConfig]): 要使用的配置对象。
 
-        Returns:
-            T: An instance of IndexConfiguration with the specified configuration.
+        返回:
+        T: 具有指定配置的配置实例。
         """
         config = ensure_config(config)
         configurable = config.get("configurable") or {}

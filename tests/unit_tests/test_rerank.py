@@ -54,9 +54,7 @@ def test_hybrid_search_uses_rerank(monkeypatch):
     monkeypatch.setattr(
         hr, "_rrf_candidates", lambda m, d, s, limit: limits.append(limit) or cand
     )
-    monkeypatch.setattr(
-        hr, "zhipu_rerank", lambda q, docs, top_n: docs[:top_n][::-1]
-    )
+    monkeypatch.setattr(hr, "zhipu_rerank", lambda q, docs, top_n: docs[:top_n][::-1])
     monkeypatch.setattr(hr, "make_client", MagicMock())
     monkeypatch.setattr("shared.retrieval.make_text_encoder", MagicMock())
     out = hr.hybrid_search(

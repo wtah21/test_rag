@@ -32,10 +32,15 @@
 
 记忆能力：
 - 短期记忆：通过 Postgres checkpointer 按 thread_id 保存会话消息历史。
-- 长期记忆：通过 Postgres store 按用户保存事实与偏好；各回复类节点
-  （respond / respond_to_general_query）都以工具型 agent
+- 长期记忆：通过 Postgres store 按用户保存 fact（客观事实）、preference
+  （回答偏好）与 status（阶段性状态/进展）三类记忆；store 以 BGE-M3 1024 维
+  向量索引记忆正文，检索按 Final_Score = Similarity × Weight 排序（fact /
+  preference 权重恒为 1，status 随"距上次访问的时间"衰减、随访问次数对数加成）。
+  各回复类节点（respond / respond_to_general_query）都以工具型 agent
   形式向模型提供 load_user_memories / update_user_memory，由模型自行判断
-  是否按需读取或保存长期记忆（见 retrieval_graph.memory）。
+  是否按需读取或保存长期记忆（见 retrieval_graph.memory）。模型只决定
+  "是否触发更新"，记忆内容由 update_user_memory 依 InjectedState 读取的
+  最近两轮对话交给 extractor 提取。
 """
 
 import asyncio
@@ -43,7 +48,9 @@ import logging
 import os
 from typing import Any, Literal, TypedDict, cast
 
+from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import (
+    AnyMessage,
     BaseMessage,
     HumanMessage,
     SystemMessage,
@@ -87,91 +94,95 @@ def _latest_human_question(state: AgentState) -> str:
 
 
 async def analyze_and_route_query(
-        state: AgentState, *, config: RunnableConfig
-    ) -> dict[str, Any]:
-        """分析用户的查询并通过三层路由确定合适的路由类型。
+    state: AgentState, config: RunnableConfig
+) -> dict[str, Any]:
+    """分析用户的查询并通过三层路由确定合适的路由类型。
 
-        采用级联的三层路由（见 retrieval_graph.routing.resolve_route）：
-        - 规则层（rule）：命中 routing_rule_keywords 关键词即短路判定；
-        - 语义层（semantic）：规则层无法确定时，用 BGE-M3 编码的语义路由匹配
-          示例问题，达到阈值即短路判定；
-        - JEV 层（jev）：前两层均无法确定时，调用 JEV 决策模型（以
-          router_system_prompt 为提示词）做最终分类。
-        命中层写入 route_layer，分类结果（langchain / general / more-info）
-        写入 router。
+    采用级联的三层路由（见 retrieval_graph.routing.resolve_route）：
+    - 规则层（rule）：命中 routing_rule_keywords 关键词即短路判定；
+    - 语义层（semantic）：规则层无法确定时，用 BGE-M3 编码的语义路由匹配
+      示例问题，达到阈值即短路判定；
+    - JEV 层（jev）：前两层均无法确定时，按 JEV 决策协议把对话上下文与
+      最新提问作为 state、以 router_system_prompt 作为 choice 问题的
+      判定指令调用 JEV 决策模型，直接取其结构化结论。
+    命中层写入 route_layer 并记录日志，分类结果（langchain / general / more-info）
+    写入 router。
 
-        各分类的走向：
-        - langchain：进入检索链路（analyze_and_rewrite_question）；
-        - general：进入普通问题回复（respond_to_general_query）；
-        - more-info：进入澄清中断（ask_for_clarification），追问话术由该节点
-          调用大模型生成。若检查点后端不可用（无法中断）或同一轮澄清次数已达
-          MAX_CLARIFY_ROUNDS，则降级为 general 基于现有信息作答。
+    各分类的走向：
+    - langchain：进入检索链路（analyze_and_rewrite_question）；
+    - general：进入普通问题回复（respond_to_general_query）；
+    - more-info：进入澄清中断（ask_for_clarification），追问话术由该节点
+      调用大模型生成。若检查点后端不可用（无法中断）或同一轮澄清次数已达
+      MAX_CLARIFY_ROUNDS，则降级为 general 基于现有信息作答。
 
-        Args:
-            state (AgentState): agent 的当前状态，包括对话历史与澄清计数。
-            config (RunnableConfig): 包含路由相关配置（规则关键词、语义示例、
-                语义阈值拓扑、JEV 提示词等）的配置。
+    Args:
+        state (AgentState): agent 的当前状态，包括对话历史与澄清计数。
+        config (RunnableConfig): 包含路由相关配置（规则关键词、语义示例、
+            语义阈值拓扑、JEV 判定指令等）的配置。
 
-        Returns:
-            dict[str, Any]: 包含 'router'（分类结果）、'route_layer'（命中层）
-            与 'clarify_count'（澄清累计次数，非澄清流程中复位为 0）的字典；
-            非澄清分支还会重置本轮 grade 记账字段。
-        """
-        configuration = AgentConfiguration.from_runnable_config(config)
-        question = _latest_human_question(state)
-        if not question:
-            raise ValueError("未找到用户提问，无法进行路由")
-        # 最近若干轮对话（截断）作为 JEV 的上下文
-        history = "\n".join(
-            f"{m.type}: {m.content}"
-            for m in (state.messages or [])[-6:]
-            if getattr(m, "content", None)
+    Returns:
+        dict[str, Any]: 包含 'router'（分类结果）、'route_layer'（命中层）
+        与 'clarify_count'（澄清累计次数，非澄清流程中复位为 0）的字典；
+        非澄清分支还会重置本轮 grade 记账字段。
+    """
+    configuration = AgentConfiguration.from_runnable_config(config)
+    question = _latest_human_question(state)
+    if not question:
+        raise ValueError("未找到用户提问，无法进行路由")
+    # 最近若干轮对话（截断）作为 JEV 的上下文
+    history = "\n".join(
+        f"{m.type}: {m.content}"
+        for m in (state.messages or [])[-6:]
+        if getattr(m, "content", None)
+    )
+    router, layer = await resolve_route(
+        question,
+        history,
+        examples=configuration.routing_semantic_examples,
+        negatives=configuration.routing_semantic_negatives,
+        top_k=configuration.routing_semantic_top_k,
+        auto_fit=configuration.routing_semantic_auto_fit,
+        keywords=configuration.routing_rule_keywords,
+        jev_prompt=configuration.router_system_prompt,
+    )
+    if router["type"] not in ("langchain", "more-info", "general"):
+        raise ValueError(f"路由输出无效: {router!r}")
+    logger.info("查询路由命中层=%s，分类=%s", layer, router["type"])
+
+    if router["type"] == "more-info":
+        can_clarify = _ON_LANGGRAPH_PLATFORM or memory.get_checkpointer() is not None
+        if can_clarify and state.clarify_count < MAX_CLARIFY_ROUNDS:
+            return {"router": router, "route_layer": layer}
+        logger.warning(
+            "路由判定 more-info 但无法继续澄清"
+            "（checkpointer 可用=%s，已澄清 %d 次），降级为 general",
+            can_clarify,
+            state.clarify_count,
         )
-        router, layer = await resolve_route(
-            question,
-            history,
-            examples=configuration.routing_semantic_examples,
-            negatives=configuration.routing_semantic_negatives,
-            top_k=configuration.routing_semantic_top_k,
-            auto_fit=configuration.routing_semantic_auto_fit,
-            keywords=configuration.routing_rule_keywords,
-            jev_prompt=configuration.router_system_prompt,
-        )
-        if router["type"] not in ("langchain", "more-info", "general"):
-            raise ValueError(f"路由输出无效: {router!r}")
-
-        if router["type"] == "more-info":
-            can_clarify = _ON_LANGGRAPH_PLATFORM or memory.get_checkpointer() is not None
-            if can_clarify and state.clarify_count < MAX_CLARIFY_ROUNDS:
-                return {"router": router, "route_layer": layer}
-            logger.warning(
-                "路由判定 more-info 但无法继续澄清"
-                "（checkpointer 可用=%s，已澄清 %d 次），降级为 general",
-                can_clarify,
-                state.clarify_count,
-            )
-            return {
-                "router": Router(type="general"),
-                "route_layer": layer,
-                "clarify_count": 0,
-            }
         return {
-            "router": router,
+            "router": Router(type="general"),
             "route_layer": layer,
             "clarify_count": 0,
-            "grade": "good",
-            "grade_attempts": 0,
-            "grade_feedback": "",
-            "grade_score": 0.0,
-            "best_score": -1.0,
-            "best_documents": [],
-            "documents": [],
         }
+    return {
+        "router": router,
+        "route_layer": layer,
+        "clarify_count": 0,
+        "grade": "good",
+        "grade_attempts": 0,
+        "grade_feedback": "",
+        "grade_score": 0.0,
+        "best_score": -1.0,
+        "best_documents": [],
+        "documents": [],
+    }
 
 
 def route_query(
-        state: AgentState,
-    ) -> Literal["analyze_and_rewrite_question", "ask_for_clarification", "respond_to_general_query"]:
+    state: AgentState,
+) -> Literal[
+    "analyze_and_rewrite_question", "ask_for_clarification", "respond_to_general_query"
+]:
     """根据查询分类确定下一步。
 
     根据查询分类确定下一步要执行的操作。
@@ -198,8 +209,8 @@ def route_query(
 
 
 async def ask_for_clarification(
-        state: AgentState, *, config: RunnableConfig
-    ) -> dict[str, Any]:
+    state: AgentState, config: RunnableConfig
+) -> dict[str, Any]:
     """因 more-info 中断本轮执行，向用户追问缺失信息并等待其补充。
 
     通过 langgraph 的 interrupt 机制暂停图的执行：追问话术由本节点调用大模型
@@ -228,7 +239,10 @@ async def ask_for_clarification(
         resp = await model.ainvoke(
             [
                 {"role": "system", "content": clarify_prompt},
-                {"role": "user", "content": f"对话上下文：\n{history}\n\n用户最新提问：\n{latest}"},
+                {
+                    "role": "user",
+                    "content": f"对话上下文：\n{history}\n\n用户最新提问：\n{latest}",
+                },
             ]
         )
         question = resp.content if isinstance(resp.content, str) else str(resp.content)
@@ -249,8 +263,8 @@ async def ask_for_clarification(
 
 
 async def respond_to_general_query(
-        state: AgentState, *, config: RunnableConfig
-    ) -> dict[str, list[BaseMessage]]:
+    state: AgentState, config: RunnableConfig
+) -> dict[str, list[BaseMessage]]:
     """生成对与 LangChain 无关的普通问题的回复。
 
     当路由器将查询归类为普通问题时，会调用此节点。
@@ -265,14 +279,19 @@ async def respond_to_general_query(
     configuration = AgentConfiguration.from_runnable_config(config)
     model = load_chat_model(configuration.query_model)
     system_prompt = configuration.general_system_prompt
-    messages = [{"role": "system", "content": system_prompt}] + state.messages
-    response = await _answer_with_memory_tools(model, messages, config=config)
+    messages: list[AnyMessage | dict[str, Any]] = [
+        {"role": "system", "content": system_prompt},
+        *state.messages,
+    ]
+    response = await _answer_with_memory_tools(
+        model, messages, state=state, config=config
+    )
     return {"messages": [response]}
 
 
 async def analyze_and_rewrite_question(
-        state: AgentState, *, config: RunnableConfig
-    ) -> dict[str, Any]:
+    state: AgentState, config: RunnableConfig
+) -> dict[str, Any]:
     """分析用户问题意图，输出用于检索的有效问题。
 
     输入为最近一条用户提问。若配置关闭意图改写（enable_intent_rewrite=False，
@@ -353,9 +372,7 @@ async def analyze_and_rewrite_question(
     }
 
 
-async def retrieve_context(
-        state: AgentState, *, config: RunnableConfig
-    ) -> dict[str, Any]:
+async def retrieve_context(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
     """用有效问题做单 query 检索，产出最终 context。
 
     知识库语料为英文、提问常为中文：稠密路（BGE-M3，多语言/跨语种）直接用
@@ -444,9 +461,7 @@ async def retrieve_context(
     }
 
 
-async def grade_documents(
-        state: AgentState, *, config: RunnableConfig
-    ) -> dict[str, Any]:
+async def grade_documents(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
     """评判检索到的文档是否足以回答用户问题，并对本轮检索打数值分。
 
     该函数以用户最近一条提问和当前检索文档为输入，使用语言模型输出
@@ -534,8 +549,8 @@ async def grade_documents(
 
 
 def route_after_grade(
-        state: AgentState,
-    ) -> Literal["analyze_and_rewrite_question", "respond"]:
+    state: AgentState,
+) -> Literal["analyze_and_rewrite_question", "respond"]:
     """根据文档评判结果决定下一步。
 
     该函数检查 grade_documents 的评判结果：
@@ -556,11 +571,12 @@ def route_after_grade(
 
 
 async def _answer_with_memory_tools(
-        model,
-        messages: list,
-        *,
-        config: RunnableConfig,
-    ) -> BaseMessage:
+    model: BaseChatModel,
+    messages: list[AnyMessage | dict[str, Any]],
+    *,
+    state: AgentState,
+    config: RunnableConfig,
+) -> BaseMessage:
     """让回复模型在可调用长期记忆工具的情况下生成一条回复。
 
     以工具型 agent 的方式运行：绑定 load_user_memories / update_user_memory，
@@ -570,6 +586,8 @@ async def _answer_with_memory_tools(
     Args:
         model: 待绑定的聊天模型（需支持 function calling）。
         messages: 已含系统提示词的对话消息列表（会被追加工具调用消息）。
+        state: 当前图状态。update_user_memory 依赖 InjectedState 读取其中最近
+            两轮对话，而模型的 tool_call 参数不含该字段，故在此显式注入。
         config: 运行时配置（含 user_id，供记忆工具定位命名空间）。
 
     Returns:
@@ -585,6 +603,8 @@ async def _answer_with_memory_tools(
         "load_user_memories": memory.load_user_memories,
         "update_user_memory": memory.update_user_memory,
     }
+    # InjectedState 参数不在工具入参 schema 内（模型不会也不该提供），需在此注入
+    tool_state = {"messages": list(state.messages)}
     response = await tooled_model.ainvoke(messages)
     for _ in range(MAX_RESPONSE_TOOL_ROUNDS):
         if not getattr(response, "tool_calls", None):
@@ -595,7 +615,9 @@ async def _answer_with_memory_tools(
             if fn is None:
                 output = f"未知记忆工具：{tool_call['name']}"
             else:
-                output = await fn.ainvoke(dict(tool_call["args"]), config=config)
+                output = await fn.ainvoke(
+                    {**tool_call["args"], "state": tool_state}, config=config
+                )
             messages.append(
                 ToolMessage(content=str(output), tool_call_id=tool_call["id"])
             )
@@ -611,8 +633,8 @@ async def _answer_with_memory_tools(
 
 
 async def respond(
-        state: AgentState, *, config: RunnableConfig
-    ) -> dict[str, list[BaseMessage]]:
+    state: AgentState, config: RunnableConfig
+) -> dict[str, list[BaseMessage]]:
     """基于已检索到的文档生成对用户查询的最终回复。
 
     该函数利用对话历史与检索到的文档来组织一个全面的回答；同时以
@@ -631,14 +653,21 @@ async def respond(
     configuration = AgentConfiguration.from_runnable_config(config)
     context = format_docs(state.documents)
     prompt = configuration.response_system_prompt.format(context=context)
-    messages = [{"role": "system", "content": prompt}, *state.messages]
+    messages: list[AnyMessage | dict[str, Any]] = [
+        {"role": "system", "content": prompt},
+        *state.messages,
+    ]
     model = load_chat_model(configuration.response_model)
-    response = await _answer_with_memory_tools(model, messages, config=config)
+    response = await _answer_with_memory_tools(
+        model, messages, state=state, config=config
+    )
     return {"messages": [response]}
 
 
 # 定义图
-builder = StateGraph(AgentState, input=InputState, config_schema=AgentConfiguration)
+builder = StateGraph(
+    AgentState, context_schema=AgentConfiguration, input_schema=InputState
+)
 builder.add_node(analyze_and_route_query)
 builder.add_node(ask_for_clarification)
 builder.add_node(respond_to_general_query)

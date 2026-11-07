@@ -41,29 +41,26 @@ class AgentConfiguration(BaseConfiguration):
     router_system_prompt: str = field(
         default=prompts.JEV_ROUTER_SYSTEM_PROMPT,
         metadata={
-            "description": "三层路由中第三层 JEV 决策模型的分类提示词（前两层无法确定时使用）。"
+            "description": "三层路由中第三层 JEV 决策模型 choice 问题的判定指令"
+            "（前两层无法确定时使用；选项语义见 routing._JEV_ROUTE_CRITERIA）。"
         },
     )
 
     general_system_prompt: str = field(
         default=prompts.GENERAL_SYSTEM_PROMPT,
-        metadata={
-            "description": "用于回复普通问题的系统提示词。"
-        },
+        metadata={"description": "用于回复普通问题的系统提示词。"},
     )
 
     intent_rewrite_system_prompt: str = field(
         default=prompts.INTENT_REWRITE_SYSTEM_PROMPT,
-        metadata={
-            "description": "用于分析用户问题意图并决定是否改写的系统提示词。"
-        },
+        metadata={"description": "用于分析用户问题意图并决定是否改写的系统提示词。"},
     )
 
     enable_intent_rewrite: bool = field(
         default=True,
         metadata={
             "description": "是否启用意图分析改写节点：开启时对模糊问题改写后再检索；"
-                            "关闭时直接用用户原问题检索（对照实验用）。"
+            "关闭时直接用用户原问题检索（对照实验用）。"
         },
     )
 
@@ -71,7 +68,7 @@ class AgentConfiguration(BaseConfiguration):
         default=prompts.TRANSLATE_QUERY_SYSTEM_PROMPT,
         metadata={
             "description": "用于从中文检索问题抽取英文检索关键词（逐字英文专名 + "
-                            "关键概念英译，BM25 稀疏检索用）的系统提示词。"
+            "关键概念英译，BM25 稀疏检索用）的系统提示词。"
         },
     )
 
@@ -79,8 +76,8 @@ class AgentConfiguration(BaseConfiguration):
         default=8,
         metadata={
             "description": "单 query 直检索流程进入 grade/respond 的最终上下文条数"
-                            "（经 top3/top8 对照实验验证，8 条在 reasoning/cross_doc 题型"
-                            "上显著优于 3 条）。"
+            "（经 top3/top8 对照实验验证，8 条在 reasoning/cross_doc 题型"
+            "上显著优于 3 条）。"
         },
     )
 
@@ -107,11 +104,29 @@ class AgentConfiguration(BaseConfiguration):
 
     routing_rule_keywords: list[str] = field(
         default_factory=lambda: [
-            "langchain", "langgraph", "langsmith", "langgraph-checkpoint",
-            "agent", "agents", "memory", "tool", "tools", "retriever", "rag",
-            "chain", "embedding", "vector", "prompt", "llm", "checkpoint",
-            "interrupt", "human-in-the-loop", "middleware", "subgraph",
-            "structured output", "text splitter",
+            "langchain",
+            "langgraph",
+            "langsmith",
+            "langgraph-checkpoint",
+            "agent",
+            "agents",
+            "memory",
+            "tool",
+            "tools",
+            "retriever",
+            "rag",
+            "chain",
+            "embedding",
+            "vector",
+            "prompt",
+            "llm",
+            "checkpoint",
+            "interrupt",
+            "human-in-the-loop",
+            "middleware",
+            "subgraph",
+            "structured output",
+            "text splitter",
         ],
         metadata={"description": "第一层规则路由的匹配关键词。"},
     )
@@ -196,7 +211,5 @@ class AgentConfiguration(BaseConfiguration):
 
     memory_update_system_prompt: str = field(
         default=prompts.MEMORY_UPDATE_SYSTEM_PROMPT,
-        metadata={
-            "description": "用于从对话中抽取/更新长期记忆的模型系统提示词。"
-        },
+        metadata={"description": "用于从对话中抽取/更新长期记忆的模型系统提示词。"},
     )

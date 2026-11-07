@@ -1,33 +1,30 @@
-"""Retrieval Graph Module
+"""检索图模块
 
-This module provides an intelligent conversational retrieval graph system for
-handling user queries about LangChain and related topics.
+本模块提供了一个智能的对话式检索图系统，用于处理用户关于 LangChain 及相关主题的查询。
 
-The main components of this system include:
+该系统的主要组件包括：
 
-1. A state management system for handling conversation context and research steps.
-2. An analysis and routing mechanism to classify user queries and determine the appropriate response path.
-3. A research planner that breaks down complex queries into manageable steps.
-4. A researcher agent that generates queries and fetches relevant information based on research steps.
-5. A response generator that formulates answers using retrieved documents and conversation history.
+1. 用于处理对话上下文和研究步骤的状态管理系统。
+2. 用于对用户查询进行分类并确定合适响应路径的分析与路由机制。
+3. 将复杂查询拆解为可执行步骤的研究规划器。
+4. 根据研究步骤生成查询并获取相关信息的研究 agent。
+5. 利用检索到的文档和对话历史生成回答的响应生成器。
 
-The graph is configured using customizable parameters defined in the AgentConfiguration class,
-allowing for flexibility in model selection, retrieval methods, and system prompts.
+该图使用 AgentConfiguration 类中定义的可自定义参数进行配置，
+在模型选择、检索方法和系统提示词方面具有灵活性。
 
-Key Features:
-- Intelligent query classification and routing
-- Multi-step research planning for complex queries
-- Integration with various retrieval providers (e.g., Elastic, Pinecone, MongoDB)
-- Customizable language models for query analysis, research planning, and response generation
-- Stateful conversation management for context-aware interactions
+主要特性：
+- 智能查询分类与路由
+- 针对复杂查询的多步骤研究规划
+- 与多种检索提供者集成（如 Elastic、Pinecone、MongoDB）
+- 可自定义的查询分析、研究规划和响应生成语言模型
+- 有状态对话管理，支持上下文感知交互
 
-Usage:
-    The main entry point for using this system is the `graph` object exported from this module.
-    It can be invoked to process user inputs, conduct research , and generate
-    informed responses based on retrieved information and conversation context.
+用法：
+    使用该系统的主要入口是本模块导出的 `graph` 对象。
+    可以调用它来处理用户输入、开展研究，并根据检索到的信息和对话上下文生成有依据的回答。
 
-For detailed configuration options and usage instructions, refer to the AgentConfiguration class
-and individual component documentation within the retrieval_graph package.
+有关详细的配置选项和使用说明，请参阅 AgentConfiguration 类以及 retrieval_graph 包内各组件的文档。
 """  # noqa
 
 from retrieval_graph.graph import graph

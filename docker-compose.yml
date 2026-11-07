@@ -1,0 +1,24 @@
+# 本地开发用的 Postgres（短期/长期记忆后端，需自带 pgvector 扩展）
+# 启动：docker compose up -d
+# 账号/库名/密码从项目根目录的 .env 读取，需与 POSTGRES_URI 保持一致
+services:
+  postgres:
+    # postgres:16 官方镜像不含 pgvector，长期记忆的向量索引会初始化失败
+    image: pgvector/pgvector:pg16
+    container_name: rag-memory-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-rag_memory}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

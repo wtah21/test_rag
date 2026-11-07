@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Any, cast
 
 import requests
 from langchain_core.documents import Document
@@ -20,7 +21,7 @@ ZHIPU_RERANK_URL = os.environ.get(
 RERANK_MODEL = os.environ.get("ZHIPU_RERANK_MODEL", "rerank")
 
 
-def _post_rerank(query: str, documents: list[str], top_n: int) -> dict:
+def _post_rerank(query: str, documents: list[str], top_n: int) -> dict[str, Any]:
     """调用智谱 Rerank API 并返回原始 JSON。
 
     独立成函数以便测试中 mock。
@@ -43,7 +44,7 @@ def _post_rerank(query: str, documents: list[str], top_n: int) -> dict:
         timeout=30,
     )
     resp.raise_for_status()
-    return resp.json()
+    return cast(dict[str, Any], resp.json())
 
 
 def zhipu_rerank(

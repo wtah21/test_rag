@@ -56,6 +56,17 @@ packages = ["retrieval_graph", "shared"]
 [tool.setuptools.package-data]
 "*" = ["py.typed"]
 
+[tool.mypy]
+# 第三方库缺少类型存根的模块统一在此忽略，避免逐处 # type: ignore
+[[tool.mypy.overrides]]
+module = [
+    "jieba",
+    "pymilvus",
+    "milvus_model.*",
+    "langmem.*",
+]
+ignore_missing_imports = true
+
 [tool.ruff]
 lint.select = [
     "E",    # pycodestyle
@@ -79,6 +90,8 @@ lint.ignore = [
 ]
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D", "UP"]
+# 索引脚本是命令行工具，进度输出依赖 print
+"scripts/*" = ["T201"]
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 [tool.pytest.ini_options]

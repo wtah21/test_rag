@@ -8,7 +8,6 @@ import pytest
 from retrieval_graph import routing
 from retrieval_graph.routing import (
     _build_thresholds,
-    _parse_jev_output,
     _rule_route,
     _semantic_match,
 )
@@ -104,13 +103,17 @@ def test_build_thresholds_uses_fit(monkeypatch):
     monkeypatch.setattr(
         "retrieval_graph.routing._get_semantic_router", lambda *a, **k: _FakeSR()
     )
-    thr = _build_thresholds(EXAMPLES, ["无关问题"], auto_fit=True, encoder=_FakeEncoder())
+    thr = _build_thresholds(
+        EXAMPLES, ["无关问题"], auto_fit=True, encoder=_FakeEncoder()
+    )
     assert thr == {"langchain": 0.42, "general": 0.33}
 
 
 def test_build_thresholds_no_fit_uses_encoder_default(monkeypatch):
     """fit 关闭时回退为编码器默认阈值。"""
-    thr = _build_thresholds(EXAMPLES, ["无关问题"], auto_fit=False, encoder=_FakeEncoder())
+    thr = _build_thresholds(
+        EXAMPLES, ["无关问题"], auto_fit=False, encoder=_FakeEncoder()
+    )
     assert set(thr.keys()) == {"langchain", "general"}
 
 
@@ -131,22 +134,87 @@ def test_build_thresholds_no_fit_handles_none_threshold():
     assert thr == {"langchain": 0.5, "general": 0.5}
 
 
-def test_parse_jev_output_plain_json():
-    assert _parse_jev_output('{"type": "langchain"}') == {"type": "langchain"}
+def test_jev_route_sends_payload_and_reads_structured_choice(monkeypatch):
+    """按 JEV 决策协议发送 payload，并直接消费结构化 answers.choice。"""
+    captured = {}
+
+    def _fake_post(payload):
+        captured.update(payload)
+        return {
+            "model": "jev-1.13.0",
+            "answers": {
+                "intent_category": {
+                    "type": "choice",
+                    "choice": "langchain",
+                    "confidence": 0.91,
+                    "probabilities": {"langchain": 0.91, "general": 0.09},
+                }
+            },
+        }
+
+    monkeypatch.setattr(routing, "_post_jev", _fake_post)
+    out = asyncio.run(routing._jev_route("怎么建图", "user: 你好", "判断类别"))
+    assert out == {"type": "langchain"}
+    question = captured["questions"]["intent_category"]
+    assert question["type"] == "choice"
+    assert question["instructions"] == "判断类别"
+    assert set(question["criteria"]) == {"langchain", "more-info", "general"}
+    assert "怎么建图" in captured["state"]
+    assert "你好" in captured["state"]
+    assert captured["model"]
 
 
-def test_parse_jev_output_with_text_wrapper():
-    assert _parse_jev_output('判断如下：{"type": "more-info"} 完毕') == {
-        "type": "more-info"
-    }
+def test_jev_route_call_failure_falls_back_general(monkeypatch):
+    """JEV 调用失败时兜底 general。"""
+
+    def _boom(payload):
+        raise RuntimeError("网络错误")
+
+    monkeypatch.setattr(routing, "_post_jev", _boom)
+    out = asyncio.run(routing._jev_route("x", "", "p"))
+    assert out == {"type": "general"}
 
 
-def test_parse_jev_output_invalid_falls_back_general():
-    assert _parse_jev_output("我不知道") == {"type": "general"}
+def test_jev_route_unknown_choice_falls_back_general(monkeypatch):
+    """JEV 返回未知类别时兜底 general。"""
+    monkeypatch.setattr(
+        routing,
+        "_post_jev",
+        lambda payload: {"answers": {"intent_category": {"choice": "unknown"}}},
+    )
+    out = asyncio.run(routing._jev_route("x", "", "p"))
+    assert out == {"type": "general"}
 
 
-def test_parse_jev_output_illegal_type_falls_back_general():
-    assert _parse_jev_output('{"type": "unknown"}') == {"type": "general"}
+def test_post_jev_requires_api_key(monkeypatch):
+    """缺少 JEV_API_KEY 时明确报错，不发出请求。"""
+    monkeypatch.delenv("JEV_API_KEY", raising=False)
+    with pytest.raises(ValueError):
+        routing._post_jev({"model": "m", "state": "s", "questions": {}})
+
+
+def test_post_jev_targets_systemone_endpoint(monkeypatch):
+    """默认打到 TypeSafe 官方 System One 端点，并以 Bearer 鉴权。"""
+    captured = {}
+
+    class _Resp:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"answers": {}}
+
+    def _fake_post(url, headers=None, json=None, timeout=None):
+        captured.update({"url": url, "headers": headers})
+        return _Resp()
+
+    monkeypatch.setenv("JEV_API_KEY", "k")
+    monkeypatch.delenv("JEV_BASE_URL", raising=False)
+    monkeypatch.delenv("JEV_DECIDE_PATH", raising=False)
+    monkeypatch.setattr(routing.requests, "post", _fake_post)
+    routing._post_jev({"model": "jev-latest", "state": "s", "questions": {}})
+    assert captured["url"] == "https://api.typesafe.ai/v1/systemone"
+    assert captured["headers"]["Authorization"] == "Bearer k"
 
 
 def test_resolve_route_rule_short_circuits(monkeypatch):
@@ -165,8 +233,14 @@ def test_resolve_route_rule_short_circuits(monkeypatch):
     monkeypatch.setattr(routing, "_jev_route", _fake_jev)
     out = asyncio.run(
         routing.resolve_route(
-            "怎么用 LangGraph 建图？", "", examples={}, negatives=[], top_k=5,
-            auto_fit=False, keywords=KEYWORDS, jev_prompt="p",
+            "怎么用 LangGraph 建图？",
+            "",
+            examples={},
+            negatives=[],
+            top_k=5,
+            auto_fit=False,
+            keywords=KEYWORDS,
+            jev_prompt="p",
         )
     )
     assert out == ({"type": "langchain"}, "rule")
@@ -183,8 +257,14 @@ def test_resolve_route_falls_back_to_jev(monkeypatch):
     monkeypatch.setattr(routing, "_jev_route", _fake_jev)
     out = asyncio.run(
         routing.resolve_route(
-            "这个不行", "", examples={}, negatives=[], top_k=5,
-            auto_fit=False, keywords=KEYWORDS, jev_prompt="p",
+            "这个不行",
+            "",
+            examples={},
+            negatives=[],
+            top_k=5,
+            auto_fit=False,
+            keywords=KEYWORDS,
+            jev_prompt="p",
         )
     )
     assert out == ({"type": "more-info"}, "jev")
@@ -256,8 +336,14 @@ def test_resolve_route_uses_cached_semantic_artifacts(monkeypatch):
     for _ in range(2):
         out = asyncio.run(
             routing.resolve_route(
-                "q-langchain", "", examples=EXAMPLES, negatives=["n"], top_k=5,
-                auto_fit=True, keywords=[], jev_prompt="p",
+                "q-langchain",
+                "",
+                examples=EXAMPLES,
+                negatives=["n"],
+                top_k=5,
+                auto_fit=True,
+                keywords=[],
+                jev_prompt="p",
             )
         )
         assert out == ({"type": "langchain"}, "semantic")

@@ -1,730 +1,222 @@
-# LangGraph RAG Research Agent Template
+# RAG 研究型问答 Agent
 
-[![CI](https://github.com/langchain-ai/rag-research-agent-template/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/langchain-ai/rag-research-agent-template/actions/workflows/unit-tests.yml)
-[![Integration Tests](https://github.com/langchain-ai/rag-research-agent-template/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/langchain-ai/rag-research-agent-template/actions/workflows/integration-tests.yml)
+面向 LangChain / LangGraph 官方文档的对话式 RAG Agent：先判断用户问题该不该查知识库，再决定是否改写问题、走向量库检索、评判检索结果是否够用，最后带着上下文作答；同时具备跨会话的长期记忆。
 
-[![Open in - LangGraph Studio](https://img.shields.io/badge/Open_in-LangGraph_Studio-00324d.svg?logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4NS4zMzMiIGhlaWdodD0iODUuMzMzIiB2ZXJzaW9uPSIxLjAiIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHBhdGggZD0iTTEzIDcuOGMtNi4zIDMuMS03LjEgNi4zLTYuOCAyNS43LjQgMjQuNi4zIDI0LjUgMjUuOSAyNC41QzU3LjUgNTggNTggNTcuNSA1OCAzMi4zIDU4IDcuMyA1Ni43IDYgMzIgNmMtMTIuOCAwLTE2LjEuMy0xOSAxLjhtMzcuNiAxNi42YzIuOCAyLjggMy40IDQuMiAzLjQgNy42cy0uNiA0LjgtMy40IDcuNkw0Ny4yIDQzSDE2LjhsLTMuNC0zLjRjLTQuOC00LjgtNC44LTEwLjQgMC0xNS4ybDMuNC0zLjRoMzAuNHoiLz48cGF0aCBkPSJNMTguOSAyNS42Yy0xLjEgMS4zLTEgMS43LjQgMi41LjkuNiAxLjcgMS44IDEuNyAyLjcgMCAxIC43IDIuOCAxLjYgNC4xIDEuNCAxLjkgMS40IDIuNS4zIDMuMi0xIC42LS42LjkgMS40LjkgMS41IDAgMi43LS41IDIuNy0xIDAtLjYgMS4xLS44IDIuNi0uNGwyLjYuNy0xLjgtMi45Yy01LjktOS4zLTkuNC0xMi4zLTExLjUtOS44TTM5IDI2YzAgMS4xLS45IDIuNS0yIDMuMi0yLjQgMS41LTIuNiAzLjQtLjUgNC4yLjguMyAyIDEuNyAyLjUgMy4xLjYgMS41IDEuNCAyLjMgMiAyIDEuNS0uOSAxLjItMy41LS40LTMuNS0yLjEgMC0yLjgtMi44LS44LTMuMyAxLjYtLjQgMS42LS41IDAtLjYtMS4xLS4xLTEuNS0uNi0xLjItMS42LjctMS43IDMuMy0yLjEgMy41LS41LjEuNS4yIDEuNi4zIDIuMiAwIC43LjkgMS40IDEuOSAxLjYgMi4xLjQgMi4zLTIuMy4yLTMuMi0uOC0uMy0yLTEuNy0yLjUtMy4xLTEuMS0zLTMtMy4zLTMtLjUiLz48L3N2Zz4=)](https://langgraph-studio.vercel.app/templates/open?githubUrl=https://github.com/langchain-ai/rag-research-agent-template)
+> 本项目改造自 [langchain-ai/rag-research-agent-template](https://github.com/langchain-ai/rag-research-agent-template)（MIT License），原始的 `index_graph`、`researcher_graph` 等模板代码已在重构中移除。
 
-This is a starter project to help you get started with developing a RAG research agent using [LangGraph](https://github.com/langchain-ai/langgraph) in [LangGraph Studio](https://github.com/langchain-ai/langgraph-studio).
+## 功能特性
 
-![Graph view in LangGraph studio UI](./static/studio_ui.png)
+- **三层级联路由**：规则关键词 → 语义路由（BGE-M3 + semantic-router）→ JEV 决策模型，逐层兜底，把问题分为 `langchain` / `general` / `more-info` 三类。
+- **混合检索**：稠密向量（硅基流动 BGE-M3，1024 维）+ 稀疏向量（BM25，jieba 中英分词）双路召回，RRF 融合后用智谱 cross-encoder 重排。
+- **意图改写**：问题表述模糊时先分析意图并改写成适合检索的规范问题；表述清晰则原样检索（可用 `enable_intent_rewrite` 关闭做对照实验）。
+- **结果自检**：`grade_documents` 给检索结果打 0~1 分，不合格就回到改写/检索环节重试，最多 3 次，超限后用历轮最高分文档强制作答。
+- **澄清中断**：信息不足时用 `interrupt` 向用户追问并等待补充，同一轮最多 2 次，无法中断时降级为普通作答。
+- **短期记忆**：Postgres checkpointer 按 `thread_id` 保存会话消息历史，支持多轮对话与中断恢复。
+- **长期记忆**：Postgres store 按用户保存 `fact`（客观事实）、`preference`（回答偏好）、`status`（阶段性状态）三类记忆，按 `相似度 × 权重` 检索，`status` 类随时间衰减、随访问次数加成。
+- **可降级**：Postgres 未配置或连接失败时，记忆功能整体退化为不可用，主流程照常运行。
 
-## What it does
+## 架构
 
-This project has three graphs:
-
-* an "index" graph (`src/index_graph/graph.py`)
-* a "retrieval" graph (`src/retrieval_graph/graph.py`)
-* a "researcher" subgraph (part of the retrieval graph) (`src/retrieval_graph/researcher_graph/graph.py`)
-
-The index graph takes in document objects indexes them.
-
-```json
-[{ "page_content": "LangGraph is a library for building stateful, multi-actor applications with LLMs, used to create agent and multi-agent workflows." }]
-```
-
-If an empty list is provided (default), a list of sample documents from `src/sample_docs.json` is indexed instead. Those sample documents are based on the conceptual guides for LangChain and LangGraph.
-
-The retrieval graph manages a chat history and responds based on the fetched documents. Specifically, it:
-
-1. Takes a user **query** as input
-2. Analyzes the query and determines how to route it:
-- if the query is about "LangChain", it creates a research plan based on the user's query and passes the plan to the researcher subgraph
-- if the query is ambiguous, it asks for more information
-- if the query is general (unrelated to LangChain), it lets the user know
-3. If the query is about "LangChain", the researcher subgraph runs for each step in the research plan, until no more steps are left:
-- it first generates a list of queries based on the step
-- it then retrieves the relevant documents in parallel for all queries and return the documents to the retrieval graph
-4. Finally, the retrieval graph generates a response based on the retrieved documents and the conversation context
-
-## Getting Started
-
-Assuming you have already [installed LangGraph Studio](https://github.com/langchain-ai/langgraph-studio?tab=readme-ov-file#download), to set up:
-
-1. Create a `.env` file.
-
-```bash
-cp .env.example .env
-```
-
-2. Select your retriever & index, and save the access instructions to your `.env` file.
-
-<!--
-Setup instruction auto-generated by `langgraph template lock`. DO NOT EDIT MANUALLY.
--->
-
-### Setup Retriever
-
-The defaults values for `retriever_provider` are shown below:
-
-```yaml
-retriever_provider: elastic-local
-```
-
-Follow the instructions below to get set up, or pick one of the additional options.
-
-#### Elasticsearch
-
-Elasticsearch (as provided by Elastic) is an open source distributed search and analytics engine, scalable data store and vector database optimized for speed and relevance on production-scale workloads.
-
-##### Setup Elasticsearch
-Elasticsearch can be configured as the knowledge base provider for a retrieval agent by being deployed on Elastic Cloud (either as a hosted deployment or serverless project) or on your local environment.
-
-**Elasticsearch Serverless**
-
-1. Signup for a free 14 day trial with [Elasticsearch Serverless](https://cloud.elastic.co/registration?onboarding_token=search&cta=cloud-registration&tech=trial&plcmt=article%20content&pg=langchain).
-2. Get the Elasticsearch URL, found on home under "Copy your connection details".
-3. Create an API key found on home under "API Key".
-4. Copy the URL and API key to your `.env` file created above:
+### 图结构
 
 ```
-ELASTICSEARCH_URL=<ES_URL>
-ELASTICSEARCH_API_KEY=<API_KEY>
+START
+  └─ analyze_and_route_query        # 三层路由
+       ├─ general    ─────────────► respond_to_general_query ─► END
+       ├─ more-info  ─────────────► ask_for_clarification ───┐
+       └─ langchain  ─────────────► analyze_and_rewrite_question
+                                          └─► retrieve_context
+                                                └─► grade_documents
+                                                      ├─ good ─► respond ─► END
+                                                      └─ bad  ─► 回到 analyze_and_rewrite_question（≤3 次）
+                                                        （ask_for_clarification 补充后回到路由节点）
 ```
 
-**Elastic Cloud**
+| 节点 | 职责 |
+|---|---|
+| `analyze_and_route_query` | 调用 `resolve_route` 做三层路由，结果写入 `router` 与 `route_layer` |
+| `ask_for_clarification` | 大模型生成追问话术，`interrupt` 等待用户补充 |
+| `analyze_and_rewrite_question` | 判断问题是否需要改写，产出检索用的有效问题 |
+| `retrieve_context` | 抽取英文检索关键词 + 单 query 混合检索 + 重排，产出最终 `documents` |
+| `grade_documents` | 给检索结果打分，记录 `grade_score` / `best_documents` |
+| `respond` | 结合文档、会话历史与长期记忆生成回答 |
+| `respond_to_general_query` | 不查知识库，直接回答普通问题 |
 
-1. Signup for a free 14 day trial with [Elastic Cloud](https://cloud.elastic.co/registration?onboarding_token=search&cta=cloud-registration&tech=trial&plcmt=article%20content&pg=langchain).
-2. Get the Elasticsearch URL, found under Applications of your deployment.
-3. Create an API key. See the [official elastic documentation](https://www.elastic.co/search-labs/tutorials/install-elasticsearch/elastic-cloud#creating-an-api-key) for more information.
-4. Copy the URL and API key to your `.env` file created above:
+### 检索链路
 
-```
-ELASTICSEARCH_URL=<ES_URL>
-ELASTICSEARCH_API_KEY=<API_KEY>
-```
-**Local Elasticsearch (Docker)**
+1. **稠密路**：用中文有效问题走 BGE-M3（多语言、可跨语种命中英文语料）。
+2. **稀疏路**：用 LLM 抽取的英文检索关键词走 BM25（纯词匹配，中文分词打不中英文词表，所以要做关键词抽取）。
+3. **融合**：两路各取 20 条，按 RRF（`k=60`）合并。
+4. **重排**：取前 20 条候选送智谱 cross-encoder，保留前 4 条作为最终上下文（重排失败自动回退为原序）。
+5. **自检**：`grade_documents` 判定不足则重试，最多 3 轮。
 
-```
-docker run \
-  -p 127.0.0.1:9200:9200 \
-  -d \
-  --name elasticsearch \
-  -e ELASTIC_PASSWORD=changeme \
-  -e "discovery.type=single-node" \
-  -e "xpack.security.http.ssl.enabled=false" \
-  -e "xpack.license.self_generated.type=trial" \
-  docker.elastic.co/elasticsearch/elasticsearch:8.15.1
-```
+### 记忆
 
-See the [official Elastic documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/run-elasticsearch-locally.html) for more information on running it locally.
+- **短期记忆**：`langgraph` 的 `PostgresSaver`，按 `thread_id` 隔离会话，是 `interrupt` 澄清能正常工作的前提。
+- **长期记忆**：`PostgresStore` 以 BGE-M3 向量索引记忆正文，命名空间为 `("memories", user_id)`。两个工具挂在回复节点上，由模型自行决定是否调用：
+  - `load_user_memories`：按问题做向量检索，取相关性最高的 5 条；
+  - `update_user_memory`：读取最近 2 轮对话，交给 langmem extractor 抽取并写入（模型只决定“要不要存”，不负责写什么）。
+- 记忆权重：`fact` / `preference` 恒为 1；`status` 按 `exp(-λ·Δt) + 0.1·ln(1+access_count)` 计算，半衰期 30 天。
 
-Then populate the following in your `.env` file:
-
-```
-# As both Elasticsearch and LangGraph Studio runs in Docker, we need to use host.docker.internal to access.
-
-ELASTICSEARCH_URL=http://host.docker.internal:9200
-ELASTICSEARCH_USER=elastic
-ELASTICSEARCH_PASSWORD=changeme
-```
-#### MongoDB Atlas
-
-MongoDB Atlas is a fully-managed cloud database that includes vector search capabilities for AI-powered applications.
-
-1. Create a free Atlas cluster:
-- Go to the [MongoDB Atlas website](https://www.mongodb.com/cloud/atlas/register) and sign up for a free account.
-- After logging in, create a free cluster by following the on-screen instructions.
-
-2. Create a vector search index
-- Follow the instructions at [the Mongo docs](https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-type/)
-- By default, we use the collection `langgraph_retrieval_agent.default` - create the index there
-- Add an indexed filter for path `user_id`
-- **IMPORTANT**: select Atlas Vector Search NOT Atlas Search when creating the index
-Your final JSON editor configuration should look something like the following:
-
-```json
-{
-  "fields": [
-    {
-      "numDimensions": 1536,
-      "path": "embedding",
-      "similarity": "cosine",
-      "type": "vector"
-    }
-  ]
-}
-```
-
-The exact numDimensions may differ if you select a different embedding model.
-
-2. Set up your environment:
-- In the Atlas dashboard, click on "Connect" for your cluster.
-- Choose "Connect your application" and copy the provided connection string.
-- Create a `.env` file in your project root if you haven't already.
-- Add your MongoDB Atlas connection string to the `.env` file:
+## 目录结构
 
 ```
-MONGODB_URI="mongodb+srv://username:password@your-cluster-url.mongodb.net/?retryWrites=true&w=majority&appName=your-cluster-name"
+.
+├── langgraph.json              # LangGraph 平台入口：图定义与 env 文件
+├── docker-compose.yml          # 本地 Postgres（pgvector 镜像）
+├── pyproject.toml              # 依赖与工具配置
+├── .env.example                # 环境变量模板
+├── knowledge/                  # 知识库原始 Markdown（索引脚本的输入）
+├── scripts/
+│   └── index_knowledge.py      # 分块 + 向量化 + 写入 Milvus
+├── src/
+│   ├── retrieval_graph/
+│   │   ├── graph.py            # 主图：路由、检索、评判、回复
+│   │   ├── routing.py          # 三层路由实现
+│   │   ├── memory.py           # 短期/长期记忆
+│   │   ├── configuration.py    # 可配置项
+│   │   ├── prompts.py          # 全部提示词
+│   │   └── state.py            # 图状态定义
+│   └── shared/
+│       ├── hybrid_retrieval.py # 稠密+稀疏检索、RRF 融合
+│       ├── retrieval.py        # 嵌入模型工厂
+│       ├── rerank.py           # 智谱 cross-encoder 重排
+│       ├── configuration.py    # 公共配置
+│       └── utils.py            # 模型加载、文档格式化
+└── tests/unit_tests/           # 单元测试
 ```
 
-Replace `username`, `password`, `your-cluster-url`, and `your-cluster-name` with your actual credentials and cluster information.
-#### Pinecone Serverless
+## 环境要求
 
-Pinecone is a managed, cloud-native vector database that provides long-term memory for high-performance AI applications.
+| 依赖 | 说明 |
+|---|---|
+| Python 3.10 ~ 3.14 | 项目以 3.12 验证，`.python-version` 已指定 3.12 |
+| [uv](https://docs.astral.sh/uv/) | 依赖与虚拟环境管理 |
+| Docker Desktop | 本地 Postgres（含 pgvector） |
+| Zilliz Cloud 实例 | 向量库，Serverless 即可；记录 URI 与 API Key |
+| 智谱开放平台 Key | 对话模型（GLM）与 cross-encoder 重排共用 |
+| 硅基流动 Key | BGE-M3 嵌入模型 |
+| JEV Key | 三层路由第三层决策模型（前两层命中时不会被调用） |
 
-1. Sign up for a Pinecone account at [https://login.pinecone.io/login](https://login.pinecone.io/login) if you haven't already.
+## 快速开始
 
-2. After logging in, generate an API key from the Pinecone console.
+### 1. 安装依赖
 
-3. Create a serverless index:
-   - Choose a name for your index (e.g., "example-index")
-   - Set the dimension based on your embedding model (e.g., 1536 for OpenAI embeddings)
-   - Select "cosine" as the metric
-   - Choose "Serverless" as the index type
-   - Select your preferred cloud provider and region (e.g., AWS us-east-1)
-
-4. Once you have created your index and obtained your API key, add them to your `.env` file:
-
-```
-PINECONE_API_KEY=your-api-key
-PINECONE_INDEX_NAME=your-index-name
+```powershell
+uv sync --extra dev
 ```
 
+### 2. 配置环境变量
 
-### Setup Model
-
-The defaults values for `response_model`, `query_model` are shown below:
-
-```yaml
-response_model: anthropic/claude-3-5-sonnet-20240620
-query_model: anthropic/claude-3-haiku-20240307
+```powershell
+Copy-Item .env.example .env
 ```
 
-Follow the instructions below to get set up, or pick one of the additional options.
+然后编辑 `.env`，按下表填写。**`.env` 已在 `.gitignore` 中，不要提交。**
 
-#### Anthropic
+| 变量 | 必填 | 用途 |
+|---|---|---|
+| `GLM_API_KEY` | 是 | 智谱 GLM 对话模型 + 重排接口 |
+| `SiliconEmbedding_API_KEY` | 是 | 硅基流动 BGE-M3 嵌入（知识库与记忆共用） |
+| `Mivilus_URL` / `Mivilus_API_KEY` | 是 | Zilliz Cloud / Milvus 连接 |
+| `POSTGRES_URI` | 建议 | 记忆后端连接串，格式 `postgresql://<user>:<password>@localhost:5433/rag_memory` |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | 建议 | 供 `docker compose` 读取，**必须与 `POSTGRES_URI` 中的账号/密码/库名一致** |
+| `JEV_API_KEY` | 是 | 路由第三层 |
+| `JEV_BASE_URL` / `JEV_MODEL` | 否 | 默认 `https://api.typesafe.ai/v1`、`jev-latest` |
+| `LANGSMITH_API_KEY` / `LANGSMITH_PROJECT` / `LANGSMITH_TRACING` | 否 | 调用链追踪 |
 
-To use Anthropic's chat models:
+可选项：`SILICONFLOW_BASE_URL`（嵌入端点）、`MIVILUS_COLLECTION`（collection 名，默认 `enterprise_knowledge`）、`JEV_DECIDE_PATH`、`ZHIPU_RERANK_URL`、`ZHIPU_RERANK_MODEL`、`BM25_MODEL_PATH`。
 
-1. Sign up for an [Anthropic API key](https://console.anthropic.com/) if you haven't already.
-2. Once you have your API key, add it to your `.env` file:
+### 3. 启动 Postgres
 
-```
-ANTHROPIC_API_KEY=your-api-key
-```
-#### OpenAI
-
-To use OpenAI's chat models:
-
-1. Sign up for an [OpenAI API key](https://platform.openai.com/signup).
-2. Once you have your API key, add it to your `.env` file:
-```
-OPENAI_API_KEY=your-api-key
-```
-
-
-
-### Setup Embedding Model
-
-The defaults values for `embedding_model` are shown below:
-
-```yaml
-embedding_model: openai/text-embedding-3-small
+```powershell
+docker compose up -d
+docker compose ps
 ```
 
-Follow the instructions below to get set up, or pick one of the additional options.
+镜像使用 `pgvector/pgvector:pg16`，因为长期记忆需要 `pgvector` 扩展（官方 `postgres:16` 镜像不含该扩展，长期记忆会直接禁用）。
 
-#### OpenAI
+> 如果之前用旧镜像起过同名容器/数据卷，先执行 `docker compose down -v` 清空旧数据再启动。
 
-To use OpenAI's embeddings:
+### 4. 建立知识库索引
 
-1. Sign up for an [OpenAI API key](https://platform.openai.com/signup).
-2. Once you have your API key, add it to your `.env` file:
-```
-OPENAI_API_KEY=your-api-key
+```powershell
+uv run python scripts/index_knowledge.py
 ```
 
-#### Cohere
+脚本会扫描 `knowledge/**/*.md`，按 `##` / `###` 标题结构分块（块大小 800、重叠 80），抽取 frontmatter 元数据，生成稠密 + BM25 稀疏向量，并**删除并重建** collection 后批量写入。
 
-To use Cohere's embeddings:
+> 该脚本会 `drop_collection`，不要在生产 collection 上直接运行。首次运行还会在 `knowledge/.bm25_model.pkl` 生成 BM25 模型（检索端加载同一份词表，删掉后需重新索引）。
 
-1. Sign up for a [Cohere API key](https://dashboard.cohere.com/welcome/register).
-2. Once you have your API key, add it to your `.env` file:
+### 5. 启动服务
 
-```bash
-COHERE_API_KEY=your-api-key
+```powershell
+uv run langgraph dev
 ```
 
+- API 默认地址：`http://127.0.0.1:2024`
+- 打开终端里输出的 Studio 链接即可在网页里对话、查看每个节点的执行轨迹
+- 图名在 `langgraph.json` 中注册为 `retrieval_graph`
 
+调用时通过 `configurable` 传入：
 
+- `thread_id`：短期记忆的会话标识，多轮对话必须传同一个值；
+- `user_id`（或平台注入的 `langgraph_user_id`）：长期记忆的归属用户，缺省为 `default-user`。
 
+## 测试与代码检查
 
-<!--
-End setup instructions
--->
+```powershell
+uv run pytest tests/unit_tests
+uv run ruff check .
+uv run ruff format .
+uv run mypy --strict src/
+```
 
-## Using
+## 常用可配置项
 
-Once you've set up your retriever and saved your model secrets, it's time to try it out! First, let's add some information to the index. Open studio, select the "indexer" graph from the dropdown in the top-left, and then add some content to chat over. You can just invoke it with an empty list (default) to index sample documents from LangChain and LangGraph documentation.
+通过 Studio 或调用时的 `configurable` 覆盖，默认值见 `src/retrieval_graph/configuration.py`：
 
-You'll know that the indexing is complete when the indexer "delete"'s the content from its graph memory (since it's been persisted in your configured storage provider).
+| 配置 | 默认值 | 说明 |
+|---|---|---|
+| `query_model` | `zhipu/glm-5.3-flash` | 路由/改写/评判用模型 |
+| `response_model` | `zhipu/glm-5.3-flash` | 生成回答用模型（需支持工具调用） |
+| `memory_model` | `zhipu/glm-5.3-flash` | 长期记忆抽取用模型 |
+| `embedding_model` | `siliconflow/BAAI/bge-m3` | 嵌入模型 |
+| `enable_intent_rewrite` | `true` | 关闭后直接用原问题检索 |
+| `context_top_k` | `8` | 关闭重排时进入回答的文档数 |
+| `rerank_enabled` | `true` | 是否启用智谱重排 |
+| `rerank_candidates` / `rerank_top_n` | `20` / `4` | 送排候选数与最终保留数 |
+| `routing_rule_keywords` | 见配置 | 第一层规则路由关键词 |
+| `routing_semantic_examples` | 见配置 | 第二层语义路由示例问题 |
+| `routing_semantic_auto_fit` | `true` | 是否自动拟合语义路由阈值 |
 
-Next, open the "retrieval_graph" using the dropdown in the top-left. Ask it questions about LangChain to confirm it can fetch the required information!
+## 常见问题
 
-## How to customize
+**长期记忆不可用（日志提示 PostgresStore 初始化失败）**
+Postgres 缺少 `pgvector` 扩展或连接串错误。确认使用的是 `pgvector/pgvector:pg16` 镜像，且 `POSTGRES_URI` 可连通、账号密码与 `POSTGRES_USER` / `POSTGRES_PASSWORD` 一致。
 
-You can customize this retrieval agent template in several ways:
+**澄清追问不生效，直接进入普通回答**
+没有可用的 checkpointer（`POSTGRES_URI` 未配置或连接失败）时无法中断，代码会降级为普通作答。修复 Postgres 后重启即可。
 
-1. **Change the retriever**: You can switch between different vector stores (Elasticsearch, MongoDB, Pinecone) by modifying the `retriever_provider` in the configuration. Each provider has its own setup instructions in the "Getting Started" section above.
+**检索结果为空 / 回答与知识库无关**
+先确认第 4 步索引成功，且 `MIVILUS_COLLECTION` 与索引时的 collection 一致；再确认 `knowledge/.bm25_model.pkl` 存在（缺失会导致稀疏路报错，重新跑索引脚本即可）。
 
-2. **Modify the embedding model**: You can change the embedding model used for document indexing and query embedding by updating the `embedding_model` in the configuration. Options include various OpenAI and Cohere models.
+**接口返回 401 / 403**
+对应服务的 Key 未填、填错或额度不足：智谱（对话+重排）、硅基流动（嵌入）、Zilliz（向量库）、JEV（路由第三层）分别检查。
 
-3. **Adjust search parameters**: Fine-tune the retrieval process by modifying the `search_kwargs` in the configuration. This allows you to control aspects like the number of documents retrieved or similarity thresholds.
+**端口被占用**
+`5433`（Postgres）或 `2024`（langgraph dev）被占用时，改 `docker-compose.yml` 的端口映射或 `uv run langgraph dev --port <端口>`，并同步修改 `POSTGRES_URI`。
 
-4. **Customize the response generation**: You can modify the `response_system_prompt` to change how the agent formulates its responses. This allows you to adjust the agent's personality or add specific instructions for answer generation.
+**Windows 上命令报错**
+本项目示例命令均为 PowerShell。`make` 目标文件已移除，直接使用上文 `uv run ...` 命令即可。
 
-5. **Modify prompts**: Update the prompts used for user query routing, research planning, query generation and more in `src/retrieval_graph/prompts.py` to better suit your specific use case or to improve the agent's performance. You can also modify these directly in LangGraph Studio. For example, you can:
+## 已知限制
 
-  * Modify system prompt for creating research plan (`research_plan_system_prompt`)
-  * Modify system prompt for generating search queries based on the research plan (`generate_queries_system_prompt`)
+- 检索是**单 query** 直检索（不再生成多 query、不做 step 级配额合并），复杂多跳问题依赖 `grade_documents` 的重试闭环。
+- 知识库语料为英文、提问多为中文，稀疏路必须依赖 LLM 抽取的英文关键词，抽取质量直接影响 BM25 命中。
+- `langgraph dev` 平台模式（`LANGSMITH_LANGGRAPH_API_VARIANT=local_dev`）下由平台依据 `POSTGRES_URI` 托管持久化，图内不再挂自定义 checkpointer/store；脱离平台直接运行时才显式接入（见 `graph.py` 末尾分支）。
+- 长期记忆的写入由模型自主触发，并非每轮必写。
 
-6. **Change the language model**: Update the `response_model` in the configuration to use different language models for response generation. Options include various Claude models from Anthropic, as well as models from other providers like Fireworks AI.
+## 许可证
 
-7. **Extend the graph**: You can add new nodes or modify existing ones in the `src/retrieval_graph/graph.py` file to introduce additional processing steps or decision points in the agent's workflow.
-
-8. **Add tools**: Implement tools to expand the researcher agent's capabilities beyond simple retrieval generation.
-
-Remember to test your changes thoroughly to ensure they improve the agent's performance for your specific use case.
-
-## Development
-
-While iterating on your graph, you can edit past state and rerun your app from past states to debug specific nodes. Local changes will be automatically applied via hot reload. Try adding an interrupt before the agent calls the researcher subgraph, updating the default system message in `src/retrieval_graph/prompts.py` to take on a persona, or adding additional nodes and edges!
-
-Follow up requests will be appended to the same thread. You can create an entirely new thread, clearing previous history, using the `+` button in the top right.
-
-You can find the latest (under construction) docs on [LangGraph](https://github.com/langchain-ai/langgraph) here, including examples and other references. Using those guides can help you pick the right patterns to adapt here for your use case.
-
-LangGraph Studio also integrates with [LangSmith](https://smith.langchain.com/) for more in-depth tracing and collaboration with teammates.
-
-<!--
-Configuration auto-generated by `langgraph template lock`. DO NOT EDIT MANUALLY.
-{
-  "config_schemas": {
-    "indexer": {
-      "type": "object",
-      "properties": {
-        "embedding_model": {
-          "type": "string",
-          "default": "openai/text-embedding-3-small",
-          "description": "Name of the embedding model to use. Must be a valid embedding model name.",
-          "environment": [
-            {
-              "value": "cohere/embed-english-light-v2.0",
-              "variables": "COHERE_API_KEY"
-            },
-            {
-              "value": "cohere/embed-english-light-v3.0",
-              "variables": "COHERE_API_KEY"
-            },
-            {
-              "value": "cohere/embed-english-v2.0",
-              "variables": "COHERE_API_KEY"
-            },
-            {
-              "value": "cohere/embed-english-v3.0",
-              "variables": "COHERE_API_KEY"
-            },
-            {
-              "value": "cohere/embed-multilingual-light-v3.0",
-              "variables": "COHERE_API_KEY"
-            },
-            {
-              "value": "cohere/embed-multilingual-v2.0",
-              "variables": "COHERE_API_KEY"
-            },
-            {
-              "value": "cohere/embed-multilingual-v3.0",
-              "variables": "COHERE_API_KEY"
-            },
-            {
-              "value": "openai/text-embedding-3-large",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/text-embedding-3-small",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/text-embedding-ada-002",
-              "variables": "OPENAI_API_KEY"
-            }
-          ]
-        },
-        "retriever_provider": {
-          "enum": [
-            "elastic-local",
-            "elastic",
-            "mongodb",
-            "pinecone"
-          ],
-          "default": "elastic-local",
-          "description": "The vector store provider to use for retrieval. Options are 'elastic', 'pinecone', or 'mongodb'.",
-          "environment": [
-            {
-              "value": "elastic",
-              "variables": [
-                "ELASTICSEARCH_URL",
-                "ELASTICSEARCH_API_KEY"
-              ]
-            },
-            {
-              "value": "elastic-local",
-              "variables": [
-                "ELASTICSEARCH_URL",
-                "ELASTICSEARCH_USER",
-                "ELASTICSEARCH_PASSWORD"
-              ]
-            },
-            {
-              "value": "mongodb",
-              "variables": [
-                "MONGODB_URI"
-              ]
-            },
-            {
-              "value": "pinecone",
-              "variables": [
-                "PINECONE_API_KEY",
-                "PINECONE_INDEX_NAME"
-              ]
-            }
-          ],
-          "type": "string"
-        }
-      }
-    },
-    "retrieval_graph": {
-      "type": "object",
-      "properties": {
-        "embedding_model": {
-          "type": "string",
-          "default": "openai/text-embedding-3-small",
-          "description": "Name of the embedding model to use. Must be a valid embedding model name.",
-          "environment": [
-            {
-              "value": "cohere/embed-english-light-v2.0",
-              "variables": "COHERE_API_KEY"
-            },
-            {
-              "value": "cohere/embed-english-light-v3.0",
-              "variables": "COHERE_API_KEY"
-            },
-            {
-              "value": "cohere/embed-english-v2.0",
-              "variables": "COHERE_API_KEY"
-            },
-            {
-              "value": "cohere/embed-english-v3.0",
-              "variables": "COHERE_API_KEY"
-            },
-            {
-              "value": "cohere/embed-multilingual-light-v3.0",
-              "variables": "COHERE_API_KEY"
-            },
-            {
-              "value": "cohere/embed-multilingual-v2.0",
-              "variables": "COHERE_API_KEY"
-            },
-            {
-              "value": "cohere/embed-multilingual-v3.0",
-              "variables": "COHERE_API_KEY"
-            },
-            {
-              "value": "openai/text-embedding-3-large",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/text-embedding-3-small",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/text-embedding-ada-002",
-              "variables": "OPENAI_API_KEY"
-            }
-          ]
-        },
-        "retriever_provider": {
-          "enum": [
-            "elastic-local",
-            "elastic",
-            "mongodb",
-            "pinecone"
-          ],
-          "default": "elastic-local",
-          "description": "The vector store provider to use for retrieval. Options are 'elastic', 'pinecone', or 'mongodb'.",
-          "environment": [
-            {
-              "value": "elastic",
-              "variables": [
-                "ELASTICSEARCH_URL",
-                "ELASTICSEARCH_API_KEY"
-              ]
-            },
-            {
-              "value": "elastic-local",
-              "variables": [
-                "ELASTICSEARCH_URL",
-                "ELASTICSEARCH_USER",
-                "ELASTICSEARCH_PASSWORD"
-              ]
-            },
-            {
-              "value": "mongodb",
-              "variables": [
-                "MONGODB_URI"
-              ]
-            },
-            {
-              "value": "pinecone",
-              "variables": [
-                "PINECONE_API_KEY",
-                "PINECONE_INDEX_NAME"
-              ]
-            }
-          ],
-          "type": "string"
-        },
-        "response_model": {
-          "type": "string",
-          "default": "anthropic/claude-3-5-sonnet-20240620",
-          "description": "The language model used for generating responses. Should be in the form: provider/model-name.",
-          "environment": [
-            {
-              "value": "anthropic/claude-1.2",
-              "variables": "ANTHROPIC_API_KEY"
-            },
-            {
-              "value": "anthropic/claude-2.0",
-              "variables": "ANTHROPIC_API_KEY"
-            },
-            {
-              "value": "anthropic/claude-2.1",
-              "variables": "ANTHROPIC_API_KEY"
-            },
-            {
-              "value": "anthropic/claude-3-5-sonnet-20240620",
-              "variables": "ANTHROPIC_API_KEY"
-            },
-            {
-              "value": "anthropic/claude-3-haiku-20240307",
-              "variables": "ANTHROPIC_API_KEY"
-            },
-            {
-              "value": "anthropic/claude-3-opus-20240229",
-              "variables": "ANTHROPIC_API_KEY"
-            },
-            {
-              "value": "anthropic/claude-3-sonnet-20240229",
-              "variables": "ANTHROPIC_API_KEY"
-            },
-            {
-              "value": "anthropic/claude-instant-1.2",
-              "variables": "ANTHROPIC_API_KEY"
-            },
-            {
-              "value": "openai/gpt-3.5-turbo",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-3.5-turbo-0125",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-3.5-turbo-0301",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-3.5-turbo-0613",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-3.5-turbo-1106",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-3.5-turbo-16k",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-3.5-turbo-16k-0613",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-0125-preview",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-0314",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-0613",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-1106-preview",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-32k",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-32k-0314",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-32k-0613",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-turbo",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-turbo-preview",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-vision-preview",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4o",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4o-mini",
-              "variables": "OPENAI_API_KEY"
-            }
-          ]
-        },
-        "query_model": {
-          "type": "string",
-          "default": "anthropic/claude-3-haiku-20240307",
-          "description": "The language model used for processing and refining queries. Should be in the form: provider/model-name.",
-          "environment": [
-            {
-              "value": "anthropic/claude-1.2",
-              "variables": "ANTHROPIC_API_KEY"
-            },
-            {
-              "value": "anthropic/claude-2.0",
-              "variables": "ANTHROPIC_API_KEY"
-            },
-            {
-              "value": "anthropic/claude-2.1",
-              "variables": "ANTHROPIC_API_KEY"
-            },
-            {
-              "value": "anthropic/claude-3-5-sonnet-20240620",
-              "variables": "ANTHROPIC_API_KEY"
-            },
-            {
-              "value": "anthropic/claude-3-haiku-20240307",
-              "variables": "ANTHROPIC_API_KEY"
-            },
-            {
-              "value": "anthropic/claude-3-opus-20240229",
-              "variables": "ANTHROPIC_API_KEY"
-            },
-            {
-              "value": "anthropic/claude-3-sonnet-20240229",
-              "variables": "ANTHROPIC_API_KEY"
-            },
-            {
-              "value": "anthropic/claude-instant-1.2",
-              "variables": "ANTHROPIC_API_KEY"
-            },
-            {
-              "value": "openai/gpt-3.5-turbo",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-3.5-turbo-0125",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-3.5-turbo-0301",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-3.5-turbo-0613",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-3.5-turbo-1106",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-3.5-turbo-16k",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-3.5-turbo-16k-0613",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-0125-preview",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-0314",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-0613",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-1106-preview",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-32k",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-32k-0314",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-32k-0613",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-turbo",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-turbo-preview",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4-vision-preview",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4o",
-              "variables": "OPENAI_API_KEY"
-            },
-            {
-              "value": "openai/gpt-4o-mini",
-              "variables": "OPENAI_API_KEY"
-            }
-          ]
-        }
-      }
-    }
-  }
-}
--->
+本项目沿用上游的 MIT License（Copyright (c) 2024 LangChain），详见 [LICENSE](./LICENSE)。分发或再发布时请保留原始版权声明与许可文本。
