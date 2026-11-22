@@ -7,7 +7,7 @@
 ## 功能特性
 
 - **三层级联路由**：规则关键词 → 语义路由（BGE-M3 + semantic-router）→ JEV 决策模型，逐层兜底，把问题分为 `langchain` / `general` / `more-info` 三类。
-- **混合检索**：稠密向量（硅基流动 BGE-M3，1024 维）+ 稀疏向量（BM25，jieba 中英分词）双路召回，RRF 融合后用智谱 cross-encoder 重排。
+- **混合检索**：稠密向量（硅基流动 BGE-M3，1024 维）+ 稀疏向量（BM25，jieba 中英分词）双路召回，RRF 融合后用本地 cross-encoder（bge-reranker-v2-m3，ONNX int8）重排。
 - **意图改写**：问题表述模糊时先分析意图并改写成适合检索的规范问题；表述清晰则原样检索（可用 `enable_intent_rewrite` 关闭做对照实验）。
 - **结果自检**：`grade_documents` 给检索结果打 0~1 分，不合格就回到改写/检索环节重试，最多 3 次，超限后用历轮最高分文档强制作答。
 - **澄清中断**：信息不足时用 `interrupt` 向用户追问并等待补充，同一轮最多 2 次，无法中断时降级为普通作答。
@@ -47,7 +47,7 @@ START
 1. **稠密路**：用中文有效问题走 BGE-M3（多语言、可跨语种命中英文语料）。
 2. **稀疏路**：用 LLM 抽取的英文检索关键词走 BM25（纯词匹配，中文分词打不中英文词表，所以要做关键词抽取）。
 3. **融合**：两路各取 20 条，按 RRF（`k=60`）合并。
-4. **重排**：取前 20 条候选送智谱 cross-encoder，保留前 4 条作为最终上下文（重排失败自动回退为原序）。
+4. **重排**：取 RRF 前 30 条候选送本地 cross-encoder（bge-reranker-v2-m3，CUDA fp16；无 GPU 时走 ONNX int8），保留前 4 条作为最终上下文（重排失败自动回退为原序）。
 5. **自检**：`grade_documents` 判定不足则重试，最多 3 轮。
 
 ### 记忆
@@ -80,7 +80,7 @@ START
 │   └── shared/
 │       ├── hybrid_retrieval.py # 稠密+稀疏检索、RRF 融合
 │       ├── retrieval.py        # 嵌入模型工厂
-│       ├── rerank.py           # 智谱 cross-encoder 重排
+│       ├── rerank.py           # 本地 cross-encoder 重排（ONNX int8）
 │       ├── configuration.py    # 公共配置
 │       └── utils.py            # 模型加载、文档格式化
 └── tests/unit_tests/           # 单元测试
@@ -94,7 +94,7 @@ START
 | [uv](https://docs.astral.sh/uv/) | 依赖与虚拟环境管理 |
 | Docker Desktop | 本地 Postgres（含 pgvector） |
 | Zilliz Cloud 实例 | 向量库，Serverless 即可；记录 URI 与 API Key |
-| 智谱开放平台 Key | 对话模型（GLM）与 cross-encoder 重排共用 |
+| 智谱开放平台 Key | 对话模型（GLM），重排已改为本地模型，不再消耗该额度 |
 | 硅基流动 Key | BGE-M3 嵌入模型 |
 | JEV Key | 三层路由第三层决策模型（前两层命中时不会被调用） |
 
@@ -116,16 +116,25 @@ Copy-Item .env.example .env
 
 | 变量 | 必填 | 用途 |
 |---|---|---|
-| `GLM_API_KEY` | 是 | 智谱 GLM 对话模型 + 重排接口 |
+| `GLM_API_KEY` | 是 | 智谱 GLM 对话模型（重排已改为本地模型） |
 | `SiliconEmbedding_API_KEY` | 是 | 硅基流动 BGE-M3 嵌入（知识库与记忆共用） |
 | `Mivilus_URL` / `Mivilus_API_KEY` | 是 | Zilliz Cloud / Milvus 连接 |
 | `POSTGRES_URI` | 建议 | 记忆后端连接串，格式 `postgresql://<user>:<password>@localhost:5433/rag_memory` |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | 建议 | 供 `docker compose` 读取，**必须与 `POSTGRES_URI` 中的账号/密码/库名一致** |
+| `RERANK_MODEL_PATH` | 建议 | GPU 重排使用的 PyTorch 模型目录，默认 `E:\trae\model\bge-reranker-v2-m3` |
+| `RERANK_ONNX_PATH` | 否 | CPU 回退使用的 ONNX int8 目录，默认 `E:\trae\model\bge-reranker-v2-m3-onnx-int8` |
+| `RERANK_DEVICE` | 否 | `auto`（默认，有 CUDA 用 GPU）/ `cuda` / `cpu` |
 | `JEV_API_KEY` | 是 | 路由第三层 |
 | `JEV_BASE_URL` / `JEV_MODEL` | 否 | 默认 `https://api.typesafe.ai/v1`、`jev-latest` |
 | `LANGSMITH_API_KEY` / `LANGSMITH_PROJECT` / `LANGSMITH_TRACING` | 否 | 调用链追踪 |
 
-可选项：`SILICONFLOW_BASE_URL`（嵌入端点）、`MIVILUS_COLLECTION`（collection 名，默认 `enterprise_knowledge`）、`JEV_DECIDE_PATH`、`ZHIPU_RERANK_URL`、`ZHIPU_RERANK_MODEL`、`BM25_MODEL_PATH`。
+> 重排模型不随仓库分发。GPU 路径使用 `bge-reranker-v2-m3` 原始 PyTorch 目录，有 CUDA 时以 fp16 加载
+> （RTX 50 系需 cu128 及以上版本的 torch，`pyproject.toml` 已配置 PyTorch 官方索引）；
+> 无 GPU 时回退到 ONNX int8 目录，该目录由 `torch.onnx.export` 导出 fp32 后经
+> `onnxruntime.quantization.quantize_dynamic` 量化得到。
+> 模型缺失或推理失败时重排自动跳过，检索结果按 RRF 原序返回，不会中断主流程。
+
+可选项：`SILICONFLOW_BASE_URL`（嵌入端点）、`MIVILUS_COLLECTION`（collection 名，默认 `enterprise_knowledge`）、`JEV_DECIDE_PATH`、`RERANK_MAX_LENGTH`（默认 512）、`RERANK_BATCH_SIZE`（默认 16）、`BM25_MODEL_PATH`。
 
 ### 3. 启动 Postgres
 
@@ -184,8 +193,8 @@ uv run mypy --strict src/
 | `embedding_model` | `siliconflow/BAAI/bge-m3` | 嵌入模型 |
 | `enable_intent_rewrite` | `true` | 关闭后直接用原问题检索 |
 | `context_top_k` | `8` | 关闭重排时进入回答的文档数 |
-| `rerank_enabled` | `true` | 是否启用智谱重排 |
-| `rerank_candidates` / `rerank_top_n` | `20` / `4` | 送排候选数与最终保留数 |
+| `rerank_enabled` | `true` | 是否启用本地 cross-encoder 重排 |
+| `rerank_candidates` / `rerank_top_n` | `30` / `4` | 送排候选数与最终保留数 |
 | `routing_rule_keywords` | 见配置 | 第一层规则路由关键词 |
 | `routing_semantic_examples` | 见配置 | 第二层语义路由示例问题 |
 | `routing_semantic_auto_fit` | `true` | 是否自动拟合语义路由阈值 |
@@ -202,7 +211,7 @@ Postgres 缺少 `pgvector` 扩展或连接串错误。确认使用的是 `pgvect
 先确认第 4 步索引成功，且 `MIVILUS_COLLECTION` 与索引时的 collection 一致；再确认 `knowledge/.bm25_model.pkl` 存在（缺失会导致稀疏路报错，重新跑索引脚本即可）。
 
 **接口返回 401 / 403**
-对应服务的 Key 未填、填错或额度不足：智谱（对话+重排）、硅基流动（嵌入）、Zilliz（向量库）、JEV（路由第三层）分别检查。
+对应服务的 Key 未填、填错或额度不足：智谱（对话）、硅基流动（嵌入）、Zilliz（向量库）、JEV（路由第三层）分别检查。
 
 **端口被占用**
 `5433`（Postgres）或 `2024`（langgraph dev）被占用时，改 `docker-compose.yml` 的端口映射或 `uv run langgraph dev --port <端口>`，并同步修改 `POSTGRES_URI`。

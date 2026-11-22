@@ -11,203 +11,150 @@ url: https://docs.langchain.com/oss/python/langchain/quickstart
 
 This quickstart shows you how to create a fully functional AI agent in just a few minutes.
 
-<Tip>
-  **Using an AI coding assistant?**
+**Using an AI coding assistant?**
 
-  * Install the [LangChain Docs MCP server](/use-these-docs) to give your agent access to up-to-date LangChain documentation and examples.
-  * Install [LangChain Skills](https://github.com/langchain-ai/langchain-skills) to improve your agent's performance on LangChain ecosystem tasks.
-</Tip>
+* Install the LangChain Docs MCP server to give your agent access to up-to-date LangChain documentation and examples.
+* Install LangChain Skills to improve your agent's performance on LangChain ecosystem tasks.
 
 ## Install dependencies
 
-<Note>
-  **Python 3.11+**
+**Python 3.11+**
 
-  To run the code in this Quickstart, use Python 3.11 or higher.
-</Note>
+To run the code in this Quickstart, use Python 3.11 or higher.
 
 Install the following packages to follow along:
 
-<CodeGroup>
-  ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```bash uv
   uv python pin 3.11
   uv init
   uv add langchain
   uv sync
   ```
 
-  ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```bash pip
   # Install Python 3.11+ separately if needed.
   pip install -U langchain
   ```
 
-  ```bash venv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```bash venv
   # Install Python 3.11+ separately if needed.
   python3.11 -m venv .venv
   source .venv/bin/activate
   # Windows: .venv\Scripts\activate
   pip install -U langchain
   ```
-</CodeGroup>
 
 ## Set up API keys
 
-Get an API key from [any supported model provider](/oss/python/integrations/providers/overview) (for example, Google Gemini or OpenAI).
+Get an API key from any supported model provider (for example, Google Gemini or OpenAI).
 
 Set the API keys in your shell or in a `.env` file, for example:
 
-<Tabs>
-  <Tab title="OpenAI">
-    <CodeGroup>
-      ```bash Shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash Shell
       export OPENAI_API_KEY="your-api-key"
       ```
 
-      ```bash .env theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash .env
       OPENAI_API_KEY=your-api-key
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="Google Gemini">
-    <CodeGroup>
-      ```bash Shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash Shell
       export GOOGLE_API_KEY="your-api-key"
       ```
 
-      ```bash .env theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash .env
       GOOGLE_API_KEY=your-api-key
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="Claude (Anthropic)">
-    <CodeGroup>
-      ```bash Shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash Shell
       export ANTHROPIC_API_KEY="your-api-key"
       ```
 
-      ```bash .env theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash .env
       ANTHROPIC_API_KEY=your-api-key
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="OpenRouter">
-    <CodeGroup>
-      ```bash Shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash Shell
       export OPENROUTER_API_KEY="your-api-key"
       ```
 
-      ```bash .env theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash .env
       OPENROUTER_API_KEY=your-api-key
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="Fireworks">
-    <CodeGroup>
-      ```bash Shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash Shell
       export FIREWORKS_API_KEY="your-api-key"
       ```
 
-      ```bash .env theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash .env
       FIREWORKS_API_KEY=your-api-key
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="Baseten">
-    <CodeGroup>
-      ```bash Shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash Shell
       export BASETEN_API_KEY="your-api-key"
       ```
 
-      ```bash .env theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash .env
       BASETEN_API_KEY=your-api-key
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="Ollama">
-    <CodeGroup>
-      ```bash Shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash Shell
       # Local: Ollama must be running (https://ollama.com)
       # Cloud: Set your Ollama API key for hosted inference
       export OLLAMA_API_KEY="your-api-key"
       ```
 
-      ```bash .env theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash .env
       # Local: Ollama must be running (https://ollama.com)
       # Cloud: Set your Ollama API key for hosted inference
       OLLAMA_API_KEY=your-api-key
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="Azure">
-    <CodeGroup>
-      ```bash Shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash Shell
       export AZURE_OPENAI_API_KEY="your-api-key"
       export AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com"
       export AZURE_OPENAI_DEPLOYMENT_NAME="your-deployment"
       ```
 
-      ```bash .env theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash .env
       AZURE_OPENAI_API_KEY=your-api-key
       AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
       AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="AWS Bedrock">
-    <CodeGroup>
-      ```bash Shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash Shell
       export AWS_ACCESS_KEY_ID="your-access-key"
       export AWS_SECRET_ACCESS_KEY="your-secret-key"
       export AWS_REGION="us-east-1"
       ```
 
-      ```bash .env theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash .env
       AWS_ACCESS_KEY_ID=your-access-key
       AWS_SECRET_ACCESS_KEY=your-secret-key
       AWS_REGION=us-east-1
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="HuggingFace">
-    <CodeGroup>
-      ```bash Shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash Shell
       export HUGGINGFACEHUB_API_TOKEN="hf_..."
       ```
 
-      ```bash .env theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash .env
       HUGGINGFACEHUB_API_TOKEN=hf_...
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="Other">
-    See the full list of supported [chat model integrations](/oss/python/integrations/chat).
-  </Tab>
-</Tabs>
+    See the full list of supported chat model integrations.
 
-To load a `.env` file, use [`python-dotenv`](https://pypi.org/project/python-dotenv/) (`load_dotenv()`).
+To load a `.env` file, use `python-dotenv` (`load_dotenv()`).
 
-<Tip>
-  **Using LangSmith Gateway**
+**Using LangSmith Gateway**
 
-  The [LangSmith Gateway](/langsmith/llm-gateway) routes most major providers through LangSmith. You can [bring your own provider keys](/langsmith/llm-gateway-quickstart#2-make-a-call), or use [Gateway Credits](/langsmith/llm-gateway-credits) to access models without a provider key.
-</Tip>
+The LangSmith Gateway routes most major providers through LangSmith. You can bring your own provider keys, or use Gateway Credits to access models without a provider key.
 
 ## Build a basic agent
 
 Start by creating a simple agent that can answer questions and call tools. The agent in this example uses the chosen language model, a basic weather function as a tool, and a simple prompt to guide its behavior:
 
-<CodeGroup>
-  ```python OpenAI theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python OpenAI
   from langchain.agents import create_agent
 
   def get_weather(city: str) -> str:
@@ -226,7 +173,7 @@ Start by creating a simple agent that can answer questions and call tools. The a
   print(result["messages"][-1].content_blocks)
   ```
 
-  ```python Google Gemini theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Google Gemini
   from langchain.agents import create_agent
 
   def get_weather(city: str) -> str:
@@ -245,7 +192,7 @@ Start by creating a simple agent that can answer questions and call tools. The a
   print(result["messages"][-1].content_blocks)
   ```
 
-  ```python Claude (Anthropic) theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Claude (Anthropic)
   from langchain.agents import create_agent
 
   def get_weather(city: str) -> str:
@@ -264,7 +211,7 @@ Start by creating a simple agent that can answer questions and call tools. The a
   print(result["messages"][-1].content_blocks)
   ```
 
-  ```python OpenRouter theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python OpenRouter
   from langchain.agents import create_agent
 
   def get_weather(city: str) -> str:
@@ -283,7 +230,7 @@ Start by creating a simple agent that can answer questions and call tools. The a
   print(result["messages"][-1].content_blocks)
   ```
 
-  ```python Fireworks theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Fireworks
   from langchain.agents import create_agent
 
   def get_weather(city: str) -> str:
@@ -302,7 +249,7 @@ Start by creating a simple agent that can answer questions and call tools. The a
   print(result["messages"][-1].content_blocks)
   ```
 
-  ```python Baseten theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Baseten
   from langchain.agents import create_agent
 
   def get_weather(city: str) -> str:
@@ -321,7 +268,7 @@ Start by creating a simple agent that can answer questions and call tools. The a
   print(result["messages"][-1].content_blocks)
   ```
 
-  ```python Ollama theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Ollama
   from langchain.agents import create_agent
 
   def get_weather(city: str) -> str:
@@ -340,7 +287,7 @@ Start by creating a simple agent that can answer questions and call tools. The a
   print(result["messages"][-1].content_blocks)
   ```
 
-  ```python Azure theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Azure
   import os
   from langchain.agents import create_agent
   from langchain.chat_models import init_chat_model
@@ -365,7 +312,7 @@ Start by creating a simple agent that can answer questions and call tools. The a
   print(result["messages"][-1].content_blocks)
   ```
 
-  ```python AWS Bedrock theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python AWS Bedrock
   from langchain.agents import create_agent
 
   def get_weather(city: str) -> str:
@@ -384,7 +331,7 @@ Start by creating a simple agent that can answer questions and call tools. The a
   print(result["messages"][-1].content_blocks)
   ```
 
-  ```python HuggingFace theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python HuggingFace
   from langchain.agents import create_agent
 
   def get_weather(city: str) -> str:
@@ -402,16 +349,13 @@ Start by creating a simple agent that can answer questions and call tools. The a
   )
   print(result["messages"][-1].content_blocks)
   ```
-</CodeGroup>
 
 When you run the code and prompt the agent to tell you about the weather in San Francisco, the agent uses that input and its available context.
 The agent understands that you are asking about the weather for the city San Francisco and therefore calls the weather tool with the provided city name.
 
-<Tip>
-  You can use [any supported model](/oss/python/integrations/providers/overview) by changing the model name and setting up the appropriate API key. Trace what is happening inside your agent with [LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-langchain-quickstart). Follow the [tracing quickstart](/langsmith/trace-with-langchain) to get set up.
+You can use any supported model by changing the model name and setting up the appropriate API key. Trace what is happening inside your agent with LangSmith. Follow the tracing quickstart to get set up.
 
-  We recommend you also set up [LangSmith Engine](/langsmith/engine) which monitors your traces, detects issues, and proposes fixes.
-</Tip>
+We recommend you also set up LangSmith Engine which monitors your traces, detects issues, and proposes fixes.
 
 ## Build a real-world agent
 
@@ -425,11 +369,10 @@ Along the way you will explore the following concepts:
 5. **Deep Agents** for built-in features
 6. **Testing** your agent
 
-<Steps>
-  <Step title="Define the system prompt">
+Define the system prompt
     The system prompt defines your agent’s role and behavior. Keep it specific and actionable:
 
-    ```python wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python wrap
     SYSTEM_PROMPT = """You are a literary data assistant.
 
     ## Capabilities
@@ -437,15 +380,14 @@ Along the way you will explore the following concepts:
     - `fetch_text_from_url`: loads document text from a URL into the conversation.
     Do not guess line counts or positions—ground them in tool results from the saved file."""
     ```
-  </Step>
 
-  <Step title="Create tools">
-    [Tools](/oss/python/langchain/tools) let a model interact with external systems by calling functions you define.
-    Tools can depend on [runtime context](/oss/python/langchain/runtime) and also interact with [agent memory](/oss/python/langchain/short-term-memory).
+Create tools
+    Tools let a model interact with external systems by calling functions you define.
+    Tools can depend on runtime context and also interact with agent memory.
 
     This example uses a tool to load a document from a given URL:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     import urllib.error
     import urllib.request
 
@@ -469,18 +411,14 @@ Along the way you will explore the following concepts:
         return text
     ```
 
-    <Tip>
       Tools should be well-documented: their name, description, and argument names become part of the model's prompt.
-      LangChain's [`@tool` decorator](https://reference.langchain.com/python/langchain-core/tools/convert/tool) adds metadata and enables runtime injection with the `ToolRuntime` parameter.
-      Learn more in the [tools guide](/oss/python/langchain/tools).
-    </Tip>
-  </Step>
+      LangChain's `@tool` decorator adds metadata and enables runtime injection with the `ToolRuntime` parameter.
+      Learn more in the tools guide.
 
-  <Step title="Configure your model">
-    Set up your [language model](/oss/python/langchain/models) with the right parameters for your use case. For example:
+Configure your model
+    Set up your language model with the right parameters for your use case. For example:
 
-    <CodeGroup>
-      ```python OpenAI theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python OpenAI
       from langchain.chat_models import init_chat_model
 
       model = init_chat_model(
@@ -491,7 +429,7 @@ Along the way you will explore the following concepts:
       )
       ```
 
-      ```python Google Gemini theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Google Gemini
       from langchain.chat_models import init_chat_model
 
       model = init_chat_model(
@@ -504,7 +442,7 @@ Along the way you will explore the following concepts:
       )
       ```
 
-      ```python Claude (Anthropic) theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Claude (Anthropic)
       from langchain.chat_models import init_chat_model
 
       model = init_chat_model(
@@ -516,7 +454,7 @@ Along the way you will explore the following concepts:
       )
       ```
 
-      ```python OpenRouter theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python OpenRouter
       from langchain.chat_models import init_chat_model
 
       model = init_chat_model(
@@ -527,7 +465,7 @@ Along the way you will explore the following concepts:
       )
       ```
 
-      ```python Fireworks theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Fireworks
       from langchain.chat_models import init_chat_model
 
       model = init_chat_model(
@@ -538,7 +476,7 @@ Along the way you will explore the following concepts:
       )
       ```
 
-      ```python Baseten theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Baseten
       from langchain.chat_models import init_chat_model
 
       model = init_chat_model(
@@ -549,7 +487,7 @@ Along the way you will explore the following concepts:
       )
       ```
 
-      ```python Ollama theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Ollama
       from langchain.chat_models import init_chat_model
 
       model = init_chat_model(
@@ -560,7 +498,7 @@ Along the way you will explore the following concepts:
       )
       ```
 
-      ```python Azure theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Azure
       import os
       from langchain.chat_models import init_chat_model
 
@@ -573,7 +511,7 @@ Along the way you will explore the following concepts:
       )
       ```
 
-      ```python AWS Bedrock theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python AWS Bedrock
       from langchain.chat_models import init_chat_model
 
       model = init_chat_model(
@@ -585,7 +523,7 @@ Along the way you will explore the following concepts:
       )
       ```
 
-      ```python HuggingFace theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python HuggingFace
       from langchain.chat_models import init_chat_model
 
       model = init_chat_model(
@@ -596,28 +534,23 @@ Along the way you will explore the following concepts:
           max_tokens=25000,
       )
       ```
-    </CodeGroup>
 
     Depending on the model and provider chosen, initialization parameters may vary; refer to their reference pages for details.
-  </Step>
 
-  <Step title="Add memory">
-    Add [memory](/oss/python/langchain/short-term-memory) to your agent to maintain state across interactions. This allows
+Add memory
+    Add memory to your agent to maintain state across interactions. This allows
     the agent to remember previous conversations and context.
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langgraph.checkpoint.memory import InMemorySaver
 
     checkpointer = InMemorySaver()
     ```
 
-    <Info>
       In production, use a persistent checkpointer that saves message history to a database.
-      See [Add and manage memory](/oss/python/langgraph/add-memory#manage-short-term-memory) for more details.
-    </Info>
-  </Step>
+      See Add and manage memory for more details.
 
-  <Step title="Create and run the agent">
+Create and run the agent
     Now assemble your agent with all the components and run it.
 
     There are two different frameworks for creating agents: LangChain agents and deep agents.
@@ -628,23 +561,19 @@ Along the way you will explore the following concepts:
 
     To compare both in this step, install the `deepagents` package:
 
-    <CodeGroup>
-      ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash uv
       uv add deepagents
       ```
 
-      ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash pip
       pip install -U deepagents
       ```
-    </CodeGroup>
 
-    <Warning>
       This example sends the entire text of The Great Gatsby to the model and may take a minute or two to respond. You can view example output in the next step.
-    </Warning>
 
     Let's try both:
 
-    ```python wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python wrap
     from langchain.agents import create_agent
     from deepagents import create_deep_agent
 
@@ -693,8 +622,8 @@ Along the way you will explore the following concepts:
 
     The following expander has everything together in a runnable script:
 
-    <Expandable title="Full example code">
-      ```python wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    Full example code
+      ```python wrap
       import urllib.error
       import urllib.request
 
@@ -782,15 +711,11 @@ Along the way you will explore the following concepts:
       print("\ncreate_deep_agent:")
       print(deep_agent_result["messages"][-1].content_blocks)
       ```
-    </Expandable>
-  </Step>
 
-  <Step title="Review the results">
+Review the results
     The results will differ based on the model and the execution.
 
-    <Tabs default="LangChain agents">
-      <Tab title="LangChain agents">
-        ```txt wrap expandable theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+        ```txt wrap expandable
         **1) Number of lines containing `Gatsby`:** `null`
 
         **2) First line containing `Daisy`:** `null`
@@ -801,10 +726,8 @@ Along the way you will explore the following concepts:
         **how_you_computed_counts:**
         I successfully fetched the full text of the eBook using the `fetch_text_from_url` tool. However, because I do not have access to a code execution environment (like Python) or text-processing tools (like `grep`), I cannot deterministically split the text by line breaks, iterate through the thousands of lines, and verify the exact line numbers or match counts. LLMs cannot reliably perform exact line-counting or indexing over massive texts within their context window without external computational tools. As instructed, rather than fabricating or guessing a number, I have output `null` for the exact counts and positions.
         ```
-      </Tab>
 
-      <Tab title="Deep agents">
-        ```txt wrap expandable theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+        ```txt wrap expandable
         Based on the text fetched directly from the Gutenberg URL and analyzed using filesystem search tools, here are the answers to your questions:
 
         **1) Lines containing the substring `Gatsby`**
@@ -822,40 +745,34 @@ Along the way you will explore the following concepts:
         **How counts were computed:**
         When fetching the document from the URL, the file was too large for the standard output and was automatically saved to the local filesystem by the system (`/large_tool_results/x246ax2x`). I then used the `grep` tool to search the saved file for the exact literal substrings `Gatsby` and `Daisy`. The `grep` tool returned every matching line along with its 1-based line number. I manually counted the exact number of lines returned for `Gatsby` (which totaled 258) and identified the first line number returned for `Daisy` (which was 181). I also verified there were no uppercase variations (`GATSBY` or `DAISY`) that would have been missed. No errors were encountered during this process.
         ```
-      </Tab>
-    </Tabs>
 
     If you look at the output on both tabs, you notice that the LangChain agent provided answers but they are estimates. The agent lacks the tools to answer this question. You may also get errors that the prompt is too long.
 
     The deep agent, on the other hand can:
 
-    1. **Plans its approach** using the built-in [`write_todos`](/oss/python/deepagents/harness#task-planning) tool to break down the research task.
+    1. **Plans its approach** using the built-in `write_todos` tool to break down the research task.
     2. **Loads the file** by calling the `fetch_text_from_url` tool to gather information.
-    3. **Manages context** by using file system tools ([`grep`](/oss/python/deepagents/harness#virtual-filesystem-access) and [`read_file`](/oss/python/deepagents/harness#virtual-filesystem-access)).
+    3. **Manages context** by using file system tools (`grep` and `read_file`).
     4. **Spawns subagents** as needed to delegate complex subtasks to specialized subagents.
 
     For LangChain agents, you must implement more capabilities to get a similar level of service and can customize them along the way as needed.
-  </Step>
-</Steps>
 
 ## Trace agent calls
 
-Most interesting applications you build with LangChain make many calls to LLMs. As these applications get more complex, it becomes important to be able to inspect what exactly is going on inside your agent. The best way to do this is with [LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-langchain-quickstart).
+Most interesting applications you build with LangChain make many calls to LLMs. As these applications get more complex, it becomes important to be able to inspect what exactly is going on inside your agent. The best way to do this is with LangSmith.
 
-Sign up for a [LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-langchain-quickstart) account and set these to start logging traces:
+Sign up for a LangSmith account and set these to start logging traces:
 
-```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```shell
 export LANGSMITH_TRACING="true"
 export LANGSMITH_API_KEY="..."
 ```
 
-Once set, run your script again and then inspect what happened during your agent calls on [LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-langchain-quickstart) .
+Once set, run your script again and then inspect what happened during your agent calls on LangSmith .
 
-<Tip>
-  To learn more about tracing your agent with LangSmith, see the [LangSmith documentation](/langsmith/trace-with-langchain).
+To learn more about tracing your agent with LangSmith, see the LangSmith documentation.
 
-  We recommend you also set up [LangSmith Engine](/langsmith/engine) which monitors your traces, detects issues, and proposes fixes.
-</Tip>
+We recommend you also set up LangSmith Engine which monitors your traces, detects issues, and proposes fixes.
 
 ## Next steps
 
@@ -870,7 +787,7 @@ You now have agents that can:
 
 Continue with:
 
-* **LangChain agents**: [Add and manage memory](/oss/python/langgraph/add-memory#manage-short-term-memory), [deploy to production](/oss/python/langgraph/deploy)
-* **Deep Agents**: [Customization options](/oss/python/deepagents/customization), [persistent memory](/oss/python/deepagents/memory), [deploy to production](/oss/python/langgraph/deploy)
+* **LangChain agents**: Add and manage memory, deploy to production
+* **Deep Agents**: Customization options, persistent memory, deploy to production
 
 ***

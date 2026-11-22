@@ -20,7 +20,7 @@ from typing import Any, Optional
 
 from langchain_core.documents import Document
 
-from shared.rerank import zhipu_rerank
+from shared.rerank import rerank_documents
 
 # 项目根目录（src/shared/hybrid_retrieval.py -> 上两级）
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -326,7 +326,7 @@ def hybrid_search(
     enable_sparse: bool = True,
     rerank: bool = False,
     rerank_top_n: int = 4,
-    rerank_candidates: int = 20,
+    rerank_candidates: int = 30,
 ) -> list[Document]:
     """对单个查询执行“稠密 + 稀疏”双路检索并用 RRF 融合结果。
 
@@ -407,7 +407,7 @@ def hybrid_search(
     limit = rerank_candidates if rerank else final_top_k
     candidates = _rrf_candidates(merged, dense_hits, sparse_hits, limit)
     if rerank and candidates:
-        return zhipu_rerank(query, candidates, top_n=rerank_top_n)
+        return rerank_documents(query, candidates, top_n=rerank_top_n)
     return candidates
 
 

@@ -17,13 +17,13 @@ Character-based splitting is the simplest approach to text splitting. It divides
 You can choose between:
 
 * `.split_text`: returns plain string chunks.
-* `.create_documents`: returns LangChain [Document](https://reference.langchain.com/python/langchain-core/documents/base/Document) objects, useful when metadata needs to be preserved for downstream tasks.
+* `.create_documents`: returns LangChain Document objects, useful when metadata needs to be preserved for downstream tasks.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 pip install -qU langchain-text-splitters
 ```
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_text_splitters import CharacterTextSplitter
 
 # Load an example document
@@ -41,13 +41,13 @@ texts = text_splitter.create_documents([state_of_the_union])
 print(texts[0])
 ```
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 page_content='Madam Speaker, Madam Vice President, our First Lady and Second Gentleman. Members of Congress and the Cabinet. Justices of the Supreme Court. My fellow Americans.  \n\nLast year COVID-19 kept us apart. This year we are finally together again. \n\nTonight, we meet as Democrats Republicans and Independents. But most importantly as Americans. \n\nWith a duty to one another to the American people to the Constitution. \n\nAnd with an unwavering resolve that freedom will always triumph over tyranny. \n\nSix days ago, Russia’s Vladimir Putin sought to shake the foundations of the free world thinking he could make it bend to his menacing ways. But he badly miscalculated. \n\nHe thought he could roll into Ukraine and the world would roll over. Instead he met a wall of strength he never imagined. \n\nHe met the Ukrainian people. \n\nFrom President Zelenskyy to every Ukrainian, their fearlessness, their courage, their determination, inspires the world.'
 ```
 
 Use `.create_documents` to propagate metadata associated with each document to the output chunks:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 metadatas = [{"document": 1}, {"document": 2}]
 documents = text_splitter.create_documents(
     [state_of_the_union, state_of_the_union], metadatas=metadatas
@@ -55,17 +55,17 @@ documents = text_splitter.create_documents(
 print(documents[0])
 ```
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 page_content='Madam Speaker, Madam Vice President, our First Lady and Second Gentleman. Members of Congress and the Cabinet. Justices of the Supreme Court. My fellow Americans.  \n\nLast year COVID-19 kept us apart. This year we are finally together again. \n\nTonight, we meet as Democrats Republicans and Independents. But most importantly as Americans. \n\nWith a duty to one another to the American people to the Constitution. \n\nAnd with an unwavering resolve that freedom will always triumph over tyranny. \n\nSix days ago, Russia’s Vladimir Putin sought to shake the foundations of the free world thinking he could make it bend to his menacing ways. But he badly miscalculated. \n\nHe thought he could roll into Ukraine and the world would roll over. Instead he met a wall of strength he never imagined. \n\nHe met the Ukrainian people. \n\nFrom President Zelenskyy to every Ukrainian, their fearlessness, their courage, their determination, inspires the world.' metadata={'document': 1}
 ```
 
 Use `.split_text` to obtain the string content directly:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 text_splitter.split_text(state_of_the_union)[0]
 ```
 
-```text theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```text
 'Madam Speaker, Madam Vice President, our First Lady and Second Gentleman. Members of Congress and the Cabinet. Justices of the Supreme Court. My fellow Americans.  \n\nLast year COVID-19 kept us apart. This year we are finally together again. \n\nTonight, we meet as Democrats Republicans and Independents. But most importantly as Americans. \n\nWith a duty to one another to the American people to the Constitution. \n\nAnd with an unwavering resolve that freedom will always triumph over tyranny. \n\nSix days ago, Russia’s Vladimir Putin sought to shake the foundations of the free world thinking he could make it bend to his menacing ways. But he badly miscalculated. \n\nHe thought he could roll into Ukraine and the world would roll over. Instead he met a wall of strength he never imagined. \n\nHe met the Ukrainian people. \n\nFrom President Zelenskyy to every Ukrainian, their fearlessness, their courage, their determination, inspires the world.'
 ```
 

@@ -10,17 +10,15 @@ url: https://docs.langchain.com/oss/python/langchain/long-term-memory
 > Add long-term memory to LangChain agents to store and recall data across conversations and sessions
 
 Long-term memory lets your agent store and recall information across different conversations and sessions.
-Unlike [short-term memory](/oss/python/langchain/short-term-memory), which is scoped to a single thread, long-term memory persists across threads and can be recalled at any time.
+Unlike short-term memory, which is scoped to a single thread, long-term memory persists across threads and can be recalled at any time.
 
-Long-term memory is built on [LangGraph stores](/oss/python/langgraph/stores), which save data as JSON documents organized by namespace and key.
+Long-term memory is built on LangGraph stores, which save data as JSON documents organized by namespace and key.
 
 ## Usage
 
-To add long-term memory to an agent, create a store and pass it to [`create_agent`](https://reference.langchain.com/python/langchain/agents/factory/create_agent):
+To add long-term memory to an agent, create a store and pass it to `create_agent`:
 
-<Tabs>
-  <Tab title="InMemoryStore">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents import create_agent
     from langchain_core.runnables import Runnable
     from langgraph.store.memory import InMemoryStore
@@ -34,24 +32,18 @@ To add long-term memory to an agent, create a store and pass it to [`create_agen
         store=store,
     )
     ```
-  </Tab>
 
-  <Tab title="PostgreSQL">
-    <CodeGroup>
-      ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash pip
       pip install -U langgraph-checkpoint-postgres "psycopg[binary]"
       ```
 
-      ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash uv
       uv add langgraph-checkpoint-postgres "psycopg[binary]"
       ```
-    </CodeGroup>
 
-    <Note>
-      By default, `langgraph-checkpoint-postgres` installs `psycopg` (Psycopg 3) without extras. The install above adds `psycopg[binary]`, which is recommended for most users. For other options, see the [Psycopg installation docs](https://www.psycopg.org/psycopg3/docs/basic/install.html).
-    </Note>
+      By default, `langgraph-checkpoint-postgres` installs `psycopg` (Psycopg 3) without extras. The install above adds `psycopg[binary]`, which is recommended for most users. For other options, see the Psycopg installation docs.
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents import create_agent
     from langchain_core.runnables import Runnable
     from langgraph.store.postgres import PostgresStore  # type: ignore[import-not-found]
@@ -66,26 +58,20 @@ To add long-term memory to an agent, create a store and pass it to [`create_agen
             store=store,
         )
     ```
-  </Tab>
-</Tabs>
 
-Tools can then read from and write to the store using the `runtime.store` parameter. See [Read long-term memory in tools](#read-long-term-memory-in-tools) and [Write long-term memory from tools](#write-long-term-memory-from-tools) for examples.
+Tools can then read from and write to the store using the `runtime.store` parameter. See Read long-term memory in tools and Write long-term memory from tools for examples.
 
-<Tip>
-  For a deeper dive into memory types (semantic, episodic, procedural) and strategies for writing memories, see the [Memory conceptual guide](/oss/python/concepts/memory#long-term-memory).
-</Tip>
+For a deeper dive into memory types (semantic, episodic, procedural) and strategies for writing memories, see the Memory conceptual guide.
 
 ## Memory storage
 
-LangGraph stores long-term memories as JSON documents in a [store](/oss/python/langgraph/stores).
+LangGraph stores long-term memories as JSON documents in a store.
 
 Each memory is organized under a custom `namespace` (similar to a folder) and a distinct `key` (like a file name). Namespaces often include user or org IDs or other labels that makes it easier to organize information.
 
 This structure enables hierarchical organization of memories. Cross-namespace searching is then supported through content filters.
 
-<Tabs>
-  <Tab title="InMemoryStore">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from collections.abc import Sequence
 
     from langgraph.store.base import IndexConfig
@@ -120,10 +106,8 @@ This structure enables hierarchical organization of memories. Cross-namespace se
         namespace, filter={"my-key": "my-value"}, query="language preferences"
     )
     ```
-  </Tab>
 
-  <Tab title="PostgreSQL">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from collections.abc import Sequence
 
     from langgraph.store.base import IndexConfig
@@ -161,17 +145,12 @@ This structure enables hierarchical organization of memories. Cross-namespace se
             namespace, filter={"my-key": "my-value"}, query="language preferences"
         )
     ```
-  </Tab>
-</Tabs>
 
-For more information about the memory store, see the [Persistence](/oss/python/langgraph/stores) guide.
+For more information about the memory store, see the Persistence guide.
 
 ## Read long-term memory in tools
 
-<Tabs>
-  <Tab title="InMemoryStore">
-    <CodeGroup>
-      ```python Google theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Google
       from dataclasses import dataclass
 
       from langchain.agents import create_agent
@@ -227,7 +206,7 @@ For more information about the memory store, see the [Persistence](/oss/python/l
       )
       ```
 
-      ```python OpenAI theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python OpenAI
       from dataclasses import dataclass
 
       from langchain.agents import create_agent
@@ -283,7 +262,7 @@ For more information about the memory store, see the [Persistence](/oss/python/l
       )
       ```
 
-      ```python Anthropic theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Anthropic
       from dataclasses import dataclass
 
       from langchain.agents import create_agent
@@ -339,7 +318,7 @@ For more information about the memory store, see the [Persistence](/oss/python/l
       )
       ```
 
-      ```python OpenRouter theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python OpenRouter
       from dataclasses import dataclass
 
       from langchain.agents import create_agent
@@ -395,7 +374,7 @@ For more information about the memory store, see the [Persistence](/oss/python/l
       )
       ```
 
-      ```python Fireworks theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Fireworks
       from dataclasses import dataclass
 
       from langchain.agents import create_agent
@@ -451,7 +430,7 @@ For more information about the memory store, see the [Persistence](/oss/python/l
       )
       ```
 
-      ```python Baseten theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Baseten
       from dataclasses import dataclass
 
       from langchain.agents import create_agent
@@ -507,7 +486,7 @@ For more information about the memory store, see the [Persistence](/oss/python/l
       )
       ```
 
-      ```python Ollama theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Ollama
       from dataclasses import dataclass
 
       from langchain.agents import create_agent
@@ -562,11 +541,8 @@ For more information about the memory store, see the [Persistence](/oss/python/l
           context=Context(user_id="user_123"),
       )
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="PostgreSQL">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from dataclasses import dataclass
 
     from langchain.agents import create_agent
@@ -605,17 +581,10 @@ For more information about the memory store, see the [Persistence](/oss/python/l
             context=Context(user_id="user_123"),
         )
     ```
-  </Tab>
-</Tabs>
-
-<a id="write-long-term" />
 
 ## Write long-term memory from tools
 
-<Tabs>
-  <Tab title="InMemoryStore">
-    <CodeGroup>
-      ```python Google theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Google
       from dataclasses import dataclass
 
       from langchain.agents import create_agent
@@ -669,7 +638,7 @@ For more information about the memory store, see the [Persistence](/oss/python/l
       item = store.get(("users",), "user_123")
       ```
 
-      ```python OpenAI theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python OpenAI
       from dataclasses import dataclass
 
       from langchain.agents import create_agent
@@ -723,7 +692,7 @@ For more information about the memory store, see the [Persistence](/oss/python/l
       item = store.get(("users",), "user_123")
       ```
 
-      ```python Anthropic theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Anthropic
       from dataclasses import dataclass
 
       from langchain.agents import create_agent
@@ -777,7 +746,7 @@ For more information about the memory store, see the [Persistence](/oss/python/l
       item = store.get(("users",), "user_123")
       ```
 
-      ```python OpenRouter theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python OpenRouter
       from dataclasses import dataclass
 
       from langchain.agents import create_agent
@@ -831,7 +800,7 @@ For more information about the memory store, see the [Persistence](/oss/python/l
       item = store.get(("users",), "user_123")
       ```
 
-      ```python Fireworks theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Fireworks
       from dataclasses import dataclass
 
       from langchain.agents import create_agent
@@ -885,7 +854,7 @@ For more information about the memory store, see the [Persistence](/oss/python/l
       item = store.get(("users",), "user_123")
       ```
 
-      ```python Baseten theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Baseten
       from dataclasses import dataclass
 
       from langchain.agents import create_agent
@@ -939,7 +908,7 @@ For more information about the memory store, see the [Persistence](/oss/python/l
       item = store.get(("users",), "user_123")
       ```
 
-      ```python Ollama theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Ollama
       from dataclasses import dataclass
 
       from langchain.agents import create_agent
@@ -992,11 +961,8 @@ For more information about the memory store, see the [Persistence](/oss/python/l
       # You can access the store directly to get the value
       item = store.get(("users",), "user_123")
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="PostgreSQL">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from dataclasses import dataclass
 
     from langchain.agents import create_agent
@@ -1039,7 +1005,5 @@ For more information about the memory store, see the [Persistence](/oss/python/l
             context=Context(user_id="user_123"),
         )
     ```
-  </Tab>
-</Tabs>
 
 ***

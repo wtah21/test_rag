@@ -7,9 +7,9 @@ url: https://docs.langchain.com/oss/python/langchain/multi-agent/custom-workflow
 
 # Custom workflow
 
-In the **custom workflow** architecture, you define your own bespoke execution flow using [LangGraph](/oss/python/langgraph/overview). You have complete control over the graph structure—including sequential steps, conditional branches, loops, and parallel execution.
+In the **custom workflow** architecture, you define your own bespoke execution flow using LangGraph. You have complete control over the graph structure—including sequential steps, conditional branches, loops, and parallel execution.
 
-```mermaid theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```mermaid
 graph LR
     A([Input]) --> B{{Conditional}}
     B -->|path_a| C[Deterministic step]
@@ -37,21 +37,20 @@ graph LR
 
 Use custom workflows when standard patterns (subagents, skills, etc.) don't fit your requirements, you need to mix deterministic logic with agentic behavior, or your use case requires complex routing or multi-stage processing.
 
-Each node in your workflow can be a simple function, an LLM call, or an entire [agent](/oss/python/langchain/agents) with [tools](/oss/python/langchain/tools). You can also compose other architectures within a custom workflow—for example, embedding a multi-agent system as a single node.
+Each node in your workflow can be a simple function, an LLM call, or an entire agent with tools. You can also compose other architectures within a custom workflow—for example, embedding a multi-agent system as a single node.
 
 For a complete example of a custom workflow, see the tutorial below.
 
-<Card title="Tutorial: Build a multi-source knowledge base with routing" icon="book" href="/oss/python/langchain/multi-agent/router-knowledge-base" arrow cta="Learn more">
-  The [router pattern](/oss/python/langchain/multi-agent/router) is an example of a custom workflow. This tutorial walks through building a router that queries GitHub, Notion, and Slack in parallel, then synthesizes results.
+Tutorial: Build a multi-source knowledge base with routing
+The router pattern is an example of a custom workflow. This tutorial walks through building a router that queries GitHub, Notion, and Slack in parallel, then synthesizes results.
 
-  >
-</Card>
+>
 
 ## Basic implementation
 
 The core insight is that you can call a LangChain agent directly inside any LangGraph node, combining the flexibility of custom workflows with the convenience of prebuilt agents:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langgraph.graph import StateGraph, START, END
 
@@ -76,16 +75,16 @@ workflow = (
 
 ## Example: RAG pipeline
 
-A common use case is combining [retrieval](/oss/python/deepagents/retrieval) with an agent. This example builds a WNBA stats assistant that retrieves from a knowledge base and can fetch live news.
+A common use case is combining retrieval with an agent. This example builds a WNBA stats assistant that retrieves from a knowledge base and can fetch live news.
 
-<Accordion title="Custom RAG workflow">
-  The workflow demonstrates three types of nodes:
+Custom RAG workflow
+The workflow demonstrates three types of nodes:
 
-  * **Model node** (Rewrite): Rewrites the user query for better retrieval using [structured output](/oss/python/langchain/structured-output).
-  * **Deterministic node** (Retrieve): Performs vector similarity search — no LLM involved.
-  * **Agent node** (Agent): Reasons over retrieved context and can fetch additional information via tools.
+* **Model node** (Rewrite): Rewrites the user query for better retrieval using structured output.
+* **Deterministic node** (Retrieve): Performs vector similarity search — no LLM involved.
+* **Agent node** (Agent): Reasons over retrieved context and can fetch additional information via tools.
 
-  ```mermaid theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```mermaid
   graph LR
       A([Query]) --> B{{Rewrite}}
       B --> C[(Retrieve)]
@@ -99,11 +98,9 @@ A common use case is combining [retrieval](/oss/python/deepagents/retrieval) wit
       class B,C,D process
   ```
 
-  <Tip>
     You can use LangGraph state to pass information between workflow steps. This allows each part of your workflow to read and update structured fields, making it easy to share data and context across nodes.
-  </Tip>
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   from typing import TypedDict
   from pydantic import BaseModel
   from langgraph.graph import StateGraph, START, END
@@ -192,9 +189,6 @@ A common use case is combining [retrieval](/oss/python/deepagents/retrieval) wit
   print(result["answer"])
   ```
 
-  <Info>
-    In production, use a persistent vector store such as [Valkey](/oss/python/integrations/vectorstores/valkey), [Databricks Vector Search](/oss/python/integrations/vectorstores/databricks_vector_search), or [MongoDB Atlas](/oss/python/integrations/vectorstores/mongodb_atlas) instead of `InMemoryVectorStore`. See [all vector stores](/oss/python/integrations/vectorstores).
-  </Info>
-</Accordion>
+    In production, use a persistent vector store such as Valkey, Databricks Vector Search, or MongoDB Atlas instead of `InMemoryVectorStore`. See all vector stores.
 
 ***

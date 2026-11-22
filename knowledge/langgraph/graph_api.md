@@ -11,11 +11,11 @@ url: https://docs.langchain.com/oss/python/langgraph/graph-api
 
 At its core, LangGraph models agent workflows as graphs. You define the behavior of your agents using three key components:
 
-1. [`State`](#state): A shared data structure that represents the current snapshot of your application. It can be any data type, but is typically defined using a shared state schema.
+1. `State`: A shared data structure that represents the current snapshot of your application. It can be any data type, but is typically defined using a shared state schema.
 
-2. [`Nodes`](#nodes): Functions that encode the logic of your agents. They receive the current state as input, perform some computation or side-effect, and return an updated state.
+2. `Nodes`: Functions that encode the logic of your agents. They receive the current state as input, perform some computation or side-effect, and return an updated state.
 
-3. [`Edges`](#edges): Functions that determine which `Node` to execute next based on the current state. They can be conditional branches or fixed transitions.
+3. `Edges`: Functions that determine which `Node` to execute next based on the current state. They can be conditional branches or fixed transitions.
 
 By composing `Nodes` and `Edges`, you can create complex, looping workflows that evolve the state over time. The real power, though, comes from how LangGraph manages that state.
 
@@ -23,41 +23,37 @@ To emphasize: `Nodes` and `Edges` are nothing more than functions—they can con
 
 In short: *nodes do the work, edges tell what to do next*.
 
-LangGraph's underlying graph algorithm uses [message passing](https://en.wikipedia.org/wiki/Message_passing) to define a general program. When a Node completes its operation, it sends messages along one or more edges to other node(s). These recipient nodes then execute their functions, pass the resulting messages to the next set of nodes, and the process continues. Inspired by Google's [Pregel](https://research.google/pubs/pregel-a-system-for-large-scale-graph-processing/) system, the program proceeds in discrete "super-steps."
+LangGraph's underlying graph algorithm uses message passing to define a general program. When a Node completes its operation, it sends messages along one or more edges to other node(s). These recipient nodes then execute their functions, pass the resulting messages to the next set of nodes, and the process continues. Inspired by Google's Pregel system, the program proceeds in discrete "super-steps."
 
 A super-step can be considered a single iteration over the graph nodes. Nodes that run in parallel are part of the same super-step, while nodes that run sequentially belong to separate super-steps. At the start of graph execution, all nodes begin in an `inactive` state. A node becomes `active` when it receives a new message (state) on any of its incoming edges (or "channels"). The active node then runs its function and responds with updates. At the end of each super-step, nodes with no incoming messages vote to `halt` by marking themselves as `inactive`. The graph execution terminates when all nodes are `inactive` and no messages are in transit.
 
 ### StateGraph
 
-The [`StateGraph`](https://reference.langchain.com/python/langgraph/graph/state/StateGraph) class is the main graph class to use. This is parameterized by a user defined `State` object.
+The `StateGraph` class is the main graph class to use. This is parameterized by a user defined `State` object.
 
 ### Compiling your graph
 
-To build your graph, you first define the [state](#state), you then add [nodes](#nodes) and [edges](#edges), and then you compile it. What exactly is compiling your graph and why is it needed?
+To build your graph, you first define the state, you then add nodes and edges, and then you compile it. What exactly is compiling your graph and why is it needed?
 
-Compiling is a pretty simple step. It provides a few basic checks on the structure of your graph (no orphaned nodes, etc). It is also where you can specify runtime args like [checkpointers](/oss/python/langgraph/persistence) and breakpoints. You compile your graph by just calling the `.compile` method:
+Compiling is a pretty simple step. It provides a few basic checks on the structure of your graph (no orphaned nodes, etc). It is also where you can specify runtime args like checkpointers and breakpoints. You compile your graph by just calling the `.compile` method:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 graph = graph_builder.compile(...)
 ```
 
-<Warning>
-  You **MUST** compile your graph before you can use it.
-</Warning>
+You **MUST** compile your graph before you can use it.
 
 ## State
 
-The first thing you do when you define a graph is define the `State` of the graph. The `State` consists of the [schema of the graph](#schema) as well as [`reducer` functions](#reducers) which specify how to apply updates to the state. The schema of the `State` will be the input schema to all `Nodes` and `Edges` in the graph, and can be either a `TypedDict` or a `Pydantic` model. All `Nodes` will emit updates to the `State` which are then applied using the specified `reducer` function.
+The first thing you do when you define a graph is define the `State` of the graph. The `State` consists of the schema of the graph as well as `reducer` functions which specify how to apply updates to the state. The schema of the `State` will be the input schema to all `Nodes` and `Edges` in the graph, and can be either a `TypedDict` or a `Pydantic` model. All `Nodes` will emit updates to the `State` which are then applied using the specified `reducer` function.
 
 ### Schema
 
-The main documented way to specify the schema of a graph is by using a [`TypedDict`](https://docs.python.org/3/library/typing.html#typing.TypedDict). If you want to provide default values in your state, use a [`dataclass`](https://docs.python.org/3/library/dataclasses.html). We also support using a Pydantic [`BaseModel`](/oss/python/langgraph/use-graph-api#use-pydantic-models-for-graph-state) as your graph state if you want recursive data validation (though note that Pydantic is less performant than a `TypedDict` or `dataclass`).
+The main documented way to specify the schema of a graph is by using a `TypedDict`. If you want to provide default values in your state, use a `dataclass`. We also support using a Pydantic `BaseModel` as your graph state if you want recursive data validation (though note that Pydantic is less performant than a `TypedDict` or `dataclass`).
 
-By default, the graph will have the same input and output schemas. If you want to change this, you can also specify explicit input and output schemas directly. This is useful when you have a lot of keys, and some are explicitly for input and others for output. See the [guide](/oss/python/langgraph/use-graph-api#define-input-and-output-schemas) for more information.
+By default, the graph will have the same input and output schemas. If you want to change this, you can also specify explicit input and output schemas directly. This is useful when you have a lot of keys, and some are explicitly for input and others for output. See the guide for more information.
 
-<Info>
-  The higher-level [`create_agent`](/oss/python/langchain/agents) factory in `langchain` does not support Pydantic state schemas.
-</Info>
+The higher-level `create_agent` factory in `langchain` does not support Pydantic state schemas.
 
 #### Multiple schemas
 
@@ -68,11 +64,11 @@ Typically, all graph nodes communicate with a single schema. This means that the
 
 It is possible to have nodes write to private state channels inside the graph for internal node communication. We can simply define a private schema, `PrivateState`.
 
-It is also possible to define explicit input and output schemas for a graph. In these cases, we define an "internal" schema that contains *all* keys relevant to graph operations. But, we also define `input` and `output` schemas that are sub-sets of the "internal" schema to constrain the input and output of the graph. See [Define input and output schemas](/oss/python/langgraph/use-graph-api#define-input-and-output-schemas) for more detail.
+It is also possible to define explicit input and output schemas for a graph. In these cases, we define an "internal" schema that contains *all* keys relevant to graph operations. But, we also define `input` and `output` schemas that are sub-sets of the "internal" schema to constrain the input and output of the graph. See Define input and output schemas for more detail.
 
 Let's look at an example:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -131,7 +127,7 @@ There are two subtle and important points to note here:
 
 2. We initialize the graph with:
 
-   ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+   ```python
    StateGraph(
        OverallState,
        input_schema=InputState,
@@ -139,18 +135,17 @@ There are two subtle and important points to note here:
    )
    ```
 
-   How can we write to `PrivateState` in `node_2`? How does the graph gain access to this schema if it was not passed in the `StateGraph` initialization?
+How can we write to `PrivateState` in `node_2`? How does the graph gain access to this schema if it was not passed in the `StateGraph` initialization?
 
-   We can do this because `_nodes` can also declare additional state `channels_` as long as the state schema definition exists. In this case, the `PrivateState` schema is defined, so we can add `bar` as a new state channel in the graph and write to it.
+We can do this because `_nodes` can also declare additional state `channels_` as long as the state schema definition exists. In this case, the `PrivateState` schema is defined, so we can add `bar` as a new state channel in the graph and write to it.
 
-<Warning>
-  **Private channels are not redacted when streaming.**
+**Private channels are not redacted when streaming.**
 
-  Input, output, and private schemas constrain what each node *reads* (its input schema) and what `invoke` *returns* (the output schema). They do **not** hide channels from `stream`.
+Input, output, and private schemas constrain what each node *reads* (its input schema) and what `invoke` *returns* (the output schema). They do **not** hide channels from `stream`.
 
-  When you stream with `stream_mode="values"`, the graph emits **all** of its state channels by default, including private ones, because values streaming defaults to the full set of state channels rather than the output schema. This is why a private channel like `bar` is hidden by `invoke` but visible while streaming:
+When you stream with `stream_mode="values"`, the graph emits **all** of its state channels by default, including private ones, because values streaming defaults to the full set of state channels rather than the output schema. This is why a private channel like `bar` is hidden by `invoke` but visible while streaming:
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   stream = graph.stream_events({"user_input": "My"}, version="v3")
   for snapshot in stream.values:
       print(snapshot)
@@ -160,21 +155,20 @@ There are two subtle and important points to note here:
   # {'foo': 'My name', 'user_input': 'My', 'graph_output': 'My name is Lance', 'bar': 'My name is'}
   ```
 
-  To restrict the streamed values to a specific set of channels (e.g. only the output schema), pass `output_keys`:
+To restrict the streamed values to a specific set of channels (e.g. only the output schema), pass `output_keys`:
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   stream = graph.stream_events(
       {"user_input": "My"},
       version="v3",
-      output_keys=["graph_output"],  # [!code highlight]
+      output_keys=["graph_output"],
   )
   for snapshot in stream.values:
       print(snapshot)
   # {'graph_output': 'My name is Lance'}
   ```
 
-  If you only need the channels a node actually produced each step (rather than the full accumulated state), use `stream_mode="updates"` instead.
-</Warning>
+If you only need the channels a node actually produced each step (rather than the full accumulated state), use `stream_mode="updates"` instead.
 
 ### Reducers
 
@@ -189,13 +183,13 @@ Every reducer is a binary function with two positional arguments:
 
 When a node returns a partial update, LangGraph calls the reducer for each updated key and saves the return value as the new state value:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 new_value = reducer(left=current_state[key], right=node_update[key])
 ```
 
 The left argument always comes from accumulated state. The right argument always comes from the latest node update. The following example names both arguments explicitly:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from typing import Annotated
 
 from typing_extensions import TypedDict
@@ -212,19 +206,19 @@ class State(TypedDict):
 
 Suppose the state is `{"tags": ["draft"]}` and a node returns `{"tags": ["review"]}`. LangGraph calls:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 append_strings(left=["draft"], right=["review"])  # returns ["draft", "review"]
 ```
 
 The new state value for `tags` is `["draft", "review"]`.
 
-Custom reducers combine the left and right arguments. The [default reducer](#default-reducer) discards the left argument and keeps only the right.
+Custom reducers combine the left and right arguments. The default reducer discards the left argument and keeps only the right.
 
 #### Default reducer
 
 The default reducer ignores the left argument and replaces the state value with the right argument. This example shows how to use the default reducer:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from typing_extensions import TypedDict
 
 
@@ -241,7 +235,7 @@ In this example, no reducer functions are specified for any key. Let's assume th
 
 A custom reducer combines the left and right arguments instead of replacing the state value, which is useful for accumulating values, such as appending updates to a list. This example shows how to specify a custom reducer:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from operator import add
 from typing import Annotated
 
@@ -257,9 +251,7 @@ In this example, we've used the `Annotated` type to specify a reducer function (
 
 #### Overwrite
 
-<Tip>
-  In some cases, you may want to bypass a reducer and directly overwrite a state value. LangGraph provides the [`Overwrite`](https://reference.langchain.com/python/langgraph/types/) type for this purpose. [Learn how to use `Overwrite` here](/oss/python/langgraph/use-graph-api#bypass-reducers-with-overwrite).
-</Tip>
+In some cases, you may want to bypass a reducer and directly overwrite a state value. LangGraph provides the `Overwrite` type for this purpose. Learn how to use `Overwrite` here.
 
 #### Resetting a reducer field
 
@@ -267,7 +259,7 @@ A common source of confusion with reducers: with a merging reducer, returning an
 
 This pattern matters for error buffers or retry counters that must be cleared between retry attempts:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from operator import add
 from typing import Annotated
 
@@ -283,9 +275,9 @@ class State(TypedDict):
 # state["errors"] is still ["bad sql"]; the empty list is merged in, not cleared
 ```
 
-To clear the field while keeping a merging reducer, wrap the update with [`Overwrite`](https://reference.langchain.com/python/langgraph/types/):
+To clear the field while keeping a merging reducer, wrap the update with `Overwrite`:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from operator import add
 from typing import Annotated
 
@@ -302,7 +294,7 @@ def clear_errors(state: State):
     return {"errors": Overwrite([])}
 ```
 
-For more information, see [Bypass reducers with Overwrite](/oss/python/langgraph/use-graph-api#bypass-reducers-with-overwrite).
+For more information, see Bypass reducers with Overwrite.
 
 ### Untracked values
 
@@ -315,7 +307,7 @@ This is useful for:
 * **Large objects** you don't want to persist
 * **Runtime-only configuration** that should be passed fresh each time
 
-```typescript theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```typescript
 import { StateSchema, UntrackedValue, MessagesValue } from "@langchain/langgraph";
 import { z } from "zod/v4";
 
@@ -344,9 +336,7 @@ const State = new StateSchema({
 * With `guard: true` (default): Throws error if multiple nodes write in the same step
 * With `guard: false`: Multiple writes allowed, last value wins
 
-<Warning>
-  Don't use `UntrackedValue` for data you need to persist across interrupts or time travel. Use regular state fields or `ReducedValue` for persistent data.
-</Warning>
+Don't use `UntrackedValue` for data you need to persist across interrupts or time travel. Use regular state fields or `ReducedValue` for persistent data.
 
 ### Type utilities
 
@@ -356,7 +346,7 @@ LangGraph provides several type utilities for better TypeScript type safety when
 
 Use `GraphNode` to type node functions defined outside the graph builder:
 
-```typescript theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```typescript
 import { GraphNode, StateSchema, Command } from "@langchain/langgraph";
 import { z } from "zod/v4";
 
@@ -392,7 +382,7 @@ const routerNode: GraphNode<{ InputSchema: typeof State; Nodes: "process" | "don
 
 Each `StateSchema` instance has a `Node` property that provides a shorthand for typing nodes:
 
-```typescript theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```typescript
 const State = new StateSchema({
   messages: MessagesValue,
   step: z.string(),
@@ -407,7 +397,7 @@ const myNode2: typeof State.Node = (state) => ({ step: "done" });
 
 Use `ConditionalEdgeRouter` for routing functions in conditional edges (no state updates, just routing):
 
-```typescript theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```typescript
 import { ConditionalEdgeRouter, END } from "@langchain/langgraph";
 
 const State = new StateSchema({
@@ -431,7 +421,7 @@ graph.addConditionalEdges("check", router);
 
 Extract the state and update types from a schema for use in custom type definitions:
 
-```typescript theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```typescript
 import { StateSchema } from "@langchain/langgraph";
 
 const MyStateSchema = new StateSchema({
@@ -454,23 +444,23 @@ type MyUpdate = typeof MyStateSchema.Update;
 
 #### Why use messages?
 
-Most modern LLM providers have a chat model interface that accepts a list of messages as input. LangChain's [chat model interface](/oss/python/langchain/models) in particular accepts a list of message objects as inputs. These messages come in a variety of forms such as [`HumanMessage`](https://reference.langchain.com/python/langchain-core/messages/human/HumanMessage) (user input) or [`AIMessage`](https://reference.langchain.com/python/langchain-core/messages/ai/AIMessage) (LLM response).
+Most modern LLM providers have a chat model interface that accepts a list of messages as input. LangChain's chat model interface in particular accepts a list of message objects as inputs. These messages come in a variety of forms such as `HumanMessage` (user input) or `AIMessage` (LLM response).
 
-To read more about what message objects are, please refer to the [Messages conceptual guide](/oss/python/langchain/messages).
+To read more about what message objects are, please refer to the Messages conceptual guide.
 
 #### Using messages in your graph
 
 In many cases, it is helpful to store prior conversation history as a list of messages in your graph state. To do so, we can add a key (channel) to the graph state that stores a list of `Message` objects and annotate it with a reducer function (see `messages` key in the example below). The reducer function is vital to telling the graph how to update the list of `Message` objects in the state with each state update (for example, when a node sends an update). If you don't specify a reducer, every state update will overwrite the list of messages with the most recently provided value. If you wanted to simply append messages to the existing list, you could use `operator.add` as a reducer.
 
-However, you might also want to manually update messages in your graph state (e.g. human-in-the-loop). If you were to use `operator.add`, the manual state updates you send to the graph would be appended to the existing list of messages, instead of updating existing messages. To avoid that, you need a reducer that can keep track of message IDs and overwrite existing messages, if updated. To achieve this, you can use the prebuilt [`add_messages`](https://reference.langchain.com/python/langgraph/graph/message/add_messages) function. For brand new messages, it will simply append to existing list, but it will also handle the updates for existing messages correctly.
+However, you might also want to manually update messages in your graph state (e.g. human-in-the-loop). If you were to use `operator.add`, the manual state updates you send to the graph would be appended to the existing list of messages, instead of updating existing messages. To avoid that, you need a reducer that can keep track of message IDs and overwrite existing messages, if updated. To achieve this, you can use the prebuilt `add_messages` function. For brand new messages, it will simply append to existing list, but it will also handle the updates for existing messages correctly.
 
 #### Serialization
 
-In addition to keeping track of message IDs, the [`add_messages`](https://reference.langchain.com/python/langgraph/graph/message/add_messages) function will also try to deserialize messages into LangChain `Message` objects whenever a state update is received on the `messages` channel.
+In addition to keeping track of message IDs, the `add_messages` function will also try to deserialize messages into LangChain `Message` objects whenever a state update is received on the `messages` channel.
 
-For more information, see [LangChain serialization/deserialization](https://python.langchain.com/docs/how_to/serialization/). This allows sending graph inputs / state updates in the following format:
+For more information, see LangChain serialization/deserialization. This allows sending graph inputs / state updates in the following format:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 # this is supported
 {"messages": [HumanMessage(content="message")]}
 
@@ -478,11 +468,11 @@ For more information, see [LangChain serialization/deserialization](https://pyth
 {"messages": [{"type": "human", "content": "message"}]}
 ```
 
-Since the state updates are always deserialized into LangChain `Messages` when using [`add_messages`](https://reference.langchain.com/python/langgraph/graph/message/add_messages), you should use dot notation to access message attributes, like `state["messages"][-1].content`.
+Since the state updates are always deserialized into LangChain `Messages` when using `add_messages`, you should use dot notation to access message attributes, like `state["messages"][-1].content`.
 
-Below is an example of a graph that uses [`add_messages`](https://reference.langchain.com/python/langgraph/graph/message/add_messages) as its reducer function.
+Below is an example of a graph that uses `add_messages` as its reducer function.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.messages import AnyMessage
 from langgraph.graph.message import add_messages
 from typing import Annotated
@@ -494,9 +484,9 @@ class GraphState(TypedDict):
 
 #### MessagesState
 
-Since having a list of messages in your state is so common, there exists a prebuilt state called `MessagesState` which makes it easy to use messages. `MessagesState` is defined with a single `messages` key which is a list of `AnyMessage` objects and uses the [`add_messages`](https://reference.langchain.com/python/langgraph/graph/message/add_messages) reducer. Typically, there is more state to track than just messages, so we see people subclass this state and add more fields, like:
+Since having a list of messages in your state is so common, there exists a prebuilt state called `MessagesState` which makes it easy to use messages. `MessagesState` is defined with a single `messages` key which is a list of `AnyMessage` objects and uses the `add_messages` reducer. Typically, there is more state to track than just messages, so we see people subclass this state and add more fields, like:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.graph import MessagesState
 
 class State(MessagesState):
@@ -507,13 +497,13 @@ class State(MessagesState):
 
 In LangGraph, nodes are Python functions (either synchronous or asynchronous) that accept the following arguments:
 
-1. `state`—The [state](#state) of the graph
-2. `config`—A [`RunnableConfig`](https://reference.langchain.com/python/langchain-core/runnables/config/RunnableConfig) object that contains configuration information like `thread_id` and tracing information like `tags`
-3. `runtime`—A `Runtime` object that contains [runtime `context`](#runtime-context) and other information like `store`, `stream_writer`, `execution_info`, `server_info`, `heartbeat` (for idle timeout refresh), and `control` (for [graceful shutdown](/oss/python/langgraph/fault-tolerance#graceful-shutdown))
+1. `state`—The state of the graph
+2. `config`—A `RunnableConfig` object that contains configuration information like `thread_id` and tracing information like `tags`
+3. `runtime`—A `Runtime` object that contains runtime `context` and other information like `store`, `stream_writer`, `execution_info`, `server_info`, `heartbeat` (for idle timeout refresh), and `control` (for graceful shutdown)
 
-Similar to `NetworkX`, you add these nodes to a graph using the [`add_node`](https://reference.langchain.com/python/langgraph/graph/state/StateGraph/add_node) method:
+Similar to `NetworkX`, you add these nodes to a graph using the `add_node` method:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from dataclasses import dataclass
 from typing_extensions import TypedDict
 
@@ -538,7 +528,7 @@ def node_with_runtime(state: State, runtime: Runtime[Context]):
     return {"results": f"Hello, {state['input']}!"}
 
 def node_with_execution_info(state: State, runtime: Runtime):
-    print("In node with thread_id: ", runtime.execution_info.thread_id)  # [!code highlight]
+    print("In node with thread_id: ", runtime.execution_info.thread_id)
     return {"results": f"Hello, {state['input']}!"}
 
 
@@ -548,32 +538,30 @@ builder.add_node("node_with_execution_info", node_with_execution_info)
 ...
 ```
 
-Behind the scenes, functions are converted to [`RunnableLambda`](https://reference.langchain.com/python/langchain-core/runnables/base/RunnableLambda), which add batch and async support to your function, along with [native tracing and debugging](/langsmith/observability).
+Behind the scenes, functions are converted to `RunnableLambda`, which add batch and async support to your function, along with native tracing and debugging.
 
 If you add a node to a graph without specifying a name, it will be given a default name equivalent to the function name.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 builder.add_node(my_node)
 # You can then create edges to/from this node by referencing it as `"my_node"`
 ```
 
 ### Re-execution and idempotency
 
-When you compile with a [checkpointer](/oss/python/langgraph/persistence), LangGraph saves checkpoints at [super-step](#graphs) boundaries, not mid-function inside a node. If execution stops and later resumes (for example after an [interrupt](/oss/python/langgraph/interrupts) or a [retry](/oss/python/langgraph/fault-tolerance#retries)), the affected **node** runs again from the start of its function. Code and side effects before the pause run again.
+When you compile with a checkpointer, LangGraph saves checkpoints at super-step boundaries, not mid-function inside a node. If execution stops and later resumes (for example after an interrupt or a retry), the affected **node** runs again from the start of its function. Code and side effects before the pause run again.
 
-**Idempotency.** Design **node** logic so re-execution does not corrupt state. If a node inserts a database row, running it twice should not create duplicate rows unless that is intentional. Use idempotency keys, upserts, or read-before-write checks. For effects around `interrupt()`, see [Side effects called before `interrupt` must be idempotent](/oss/python/langgraph/interrupts#side-effects-called-before-interrupt-must-be-idempotent).
+**Idempotency.** Design **node** logic so re-execution does not corrupt state. If a node inserts a database row, running it twice should not create duplicate rows unless that is intentional. Use idempotency keys, upserts, or read-before-write checks. For effects around `interrupt()`, see Side effects called before `interrupt` must be idempotent.
 
-**Graph changes.** [Determinism](/oss/python/langgraph/functional-api#determinism) rules about code changes do not apply to graph structure. You can add or remove **nodes** and edges without breaking resume for existing threads. Resumed runs use saved state and execute whatever graph you compile now.
+**Graph changes.** Determinism rules about code changes do not apply to graph structure. You can add or remove **nodes** and edges without breaking resume for existing threads. Resumed runs use saved state and execute whatever graph you compile now.
 
-**Tasks and interrupts inside a node.** If a **node** calls [**tasks**](/oss/python/langgraph/functional-api#task) or [`interrupt`](https://reference.langchain.com/python/langgraph/types/interrupt), stricter determinism rules apply on resume. LangGraph restores completed **task** results from the checkpointer, but changing **task** or [`interrupt`](https://reference.langchain.com/python/langgraph/types/interrupt) order in code before the resume point can mismatch cached values. A [Functional API](/oss/python/langgraph/functional-api) **entrypoint** compiles to a single **node** that runs the whole entrypoint method this way. See [Determinism](/oss/python/langgraph/functional-api#determinism), [Idempotency](/oss/python/langgraph/functional-api#idempotency), and [Using tasks in nodes](#using-tasks-in-nodes).
+**Tasks and interrupts inside a node.** If a **node** calls **tasks** or `interrupt`, stricter determinism rules apply on resume. LangGraph restores completed **task** results from the checkpointer, but changing **task** or `interrupt` order in code before the resume point can mismatch cached values. A Functional API **entrypoint** compiles to a single **node** that runs the whole entrypoint method this way. See Determinism, Idempotency, and Using tasks in nodes.
 
 ### Using tasks in nodes
 
-If a [node](#nodes) contains multiple operations, you may find it easier to implement each operation as a [**task**](/oss/python/langgraph/functional-api#task) instead of splitting the logic across multiple nodes. Task results are checkpointed when the graph uses a checkpointer, so resuming a thread can skip completed **task** work inside the node.
+If a node contains multiple operations, you may find it easier to implement each operation as a **task** instead of splitting the logic across multiple nodes. Task results are checkpointed when the graph uses a checkpointer, so resuming a thread can skip completed **task** work inside the node.
 
-<Tabs>
-  <Tab title="Original">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from typing import NotRequired
 
     import requests
@@ -590,7 +578,7 @@ If a [node](#nodes) contains multiple operations, you may find it easier to impl
 
     def call_api(state: State):
         """Example node that makes an API request."""
-        result = requests.get(state["url"]).text[:100]  # [!code highlight]
+        result = requests.get(state["url"]).text[:100]
         return {"result": result}
 
 
@@ -607,10 +595,8 @@ If a [node](#nodes) contains multiple operations, you may find it easier to impl
 
     graph.invoke({"url": "https://www.example.com"}, config)
     ```
-  </Tab>
 
-  <Tab title="With task">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from typing import NotRequired
 
     import requests
@@ -629,12 +615,12 @@ If a [node](#nodes) contains multiple operations, you may find it easier to impl
     @task
     def _make_request(url: str):
         """Make a request."""
-        return requests.get(url).text[:100]  # [!code highlight]
+        return requests.get(url).text[:100]
 
 
     def call_api(state: State):
         """Example node that makes API requests as checkpointed tasks."""
-        futures = [_make_request(url) for url in state["urls"]]  # [!code highlight]
+        futures = [_make_request(url) for url in state["urls"]]
         results = [f.result() for f in futures]
         return {"results": results}
 
@@ -652,14 +638,12 @@ If a [node](#nodes) contains multiple operations, you may find it easier to impl
 
     graph.invoke({"urls": ["https://www.example.com"]}, config)
     ```
-  </Tab>
-</Tabs>
 
 ### `START` node
 
-The [`START`](https://reference.langchain.com/python/langgraph/constants/START) Node is a special node that represents the node that sends user input to the graph. The main purpose for referencing this node is to determine which nodes should be called first.
+The `START` Node is a special node that represents the node that sends user input to the graph. The main purpose for referencing this node is to determine which nodes should be called first.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.graph import START
 
 graph.add_edge(START, "node_a")
@@ -669,7 +653,7 @@ graph.add_edge(START, "node_a")
 
 The `END` Node is a special node that represents a terminal node. This node is referenced when you want to denote which edges have no actions after they are done.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.graph import END
 
 graph.add_edge("node_a", END)
@@ -681,12 +665,12 @@ LangGraph supports caching of tasks/nodes based on the input to the node. To use
 
 * Specify a cache when compiling a graph (or specifying an entrypoint)
 * Specify a cache policy for nodes. Each cache policy supports:
-  * `key_func` used to generate a cache key based on the input to a node, which defaults to a `hash` of the input with pickle.
-  * `ttl`, the time to live for the cache in seconds. If not specified, the cache will never expire.
+* `key_func` used to generate a cache key based on the input to a node, which defaults to a `hash` of the input with pickle.
+* `ttl`, the time to live for the cache in seconds. If not specified, the cache will never expire.
 
 For example:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import time
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph
@@ -714,22 +698,20 @@ builder.set_finish_point("expensive_node")
 
 graph = builder.compile(cache=InMemoryCache())
 
-print(graph.invoke({"x": 5}, stream_mode='updates'))    # [!code highlight]
+print(graph.invoke({"x": 5}, stream_mode='updates'))
 # [{'expensive_node': {'result': 10}}]
-print(graph.invoke({"x": 5}, stream_mode='updates'))    # [!code highlight]
+print(graph.invoke({"x": 5}, stream_mode='updates'))
 # [{'expensive_node': {'result': 10}, '__metadata__': {'cached': True}}]
 ```
 
-<Note>
-  `set_entry_point(node)` defines the first node the graph will execute.
-  It is equivalent to `builder.add_edge(START, node)`.
+`set_entry_point(node)` defines the first node the graph will execute.
+It is equivalent to `builder.add_edge(START, node)`.
 
-  `set_finish_point(node)` defines the last node in the graph.
-  It is equivalent to `builder.add_edge(node, END)`.
+`set_finish_point(node)` defines the last node in the graph.
+It is equivalent to `builder.add_edge(node, END)`.
 
-  Both methods are valid but `add_edge(START, ...)` and `add_edge(..., END)`
-  are the recommended modern syntax.
-</Note>
+Both methods are valid but `add_edge(START, ...)` and `add_edge(..., END)`
+are the recommended modern syntax.
 
 1. First run takes two seconds to run (due to mocked expensive computation).
 2. Second run utilizes cache and returns quickly.
@@ -745,23 +727,21 @@ Edges define how the logic is routed and how the graph decides to stop. This is 
 
 A node can have multiple outgoing edges. If a node has multiple outgoing edges, **all** of those destination nodes will be executed in parallel as a part of the next superstep.
 
-<Warning>
-  For each node, choose one routing mechanism: use normal edges for static routing, or use conditional edges / [`Command`](https://reference.langchain.com/python/langgraph/types/Command) for dynamic routing. Do not mix normal edges and dynamic routing from the same node, because both paths can execute and make graph behavior harder to reason about.
-</Warning>
+For each node, choose one routing mechanism: use normal edges for static routing, or use conditional edges / `Command` for dynamic routing. Do not mix normal edges and dynamic routing from the same node, because both paths can execute and make graph behavior harder to reason about.
 
 ### Normal edges
 
-If you **always** want to go from node A to node B, you can use the [`add_edge`](https://reference.langchain.com/python/langgraph/pregel/_draw/add_edge) method directly.
+If you **always** want to go from node A to node B, you can use the `add_edge` method directly.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 graph.add_edge("node_a", "node_b")
 ```
 
 ### Conditional edges
 
-If you want to **optionally** route to one or more edges (or optionally terminate), you can use the [`add_conditional_edges`](https://reference.langchain.com/python/langgraph/graph/state/StateGraph/add_conditional_edges) method. This method accepts the name of a node and a "routing function" to call after that node is executed:
+If you want to **optionally** route to one or more edges (or optionally terminate), you can use the `add_conditional_edges` method. This method accepts the name of a node and a "routing function" to call after that node is executed:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 graph.add_conditional_edges("node_a", routing_function)
 ```
 
@@ -771,19 +751,17 @@ By default, the return value `routing_function` is used as the name of the node 
 
 You can optionally provide a dictionary that maps the `routing_function`'s output to the name of the next node.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 graph.add_conditional_edges("node_a", routing_function, {True: "node_b", False: "node_c"})
 ```
 
-<Tip>
-  Use [`Command`](#command) instead of conditional edges if you want to combine state updates and routing in a single function.
-</Tip>
+Use `Command` instead of conditional edges if you want to combine state updates and routing in a single function.
 
 ### Entry point
 
-The entry point is the first node(s) that are run when the graph starts. You can use the [`add_edge`](https://reference.langchain.com/python/langgraph/pregel/_draw/add_edge) method from the virtual [`START`](https://reference.langchain.com/python/langgraph/constants/START) node to the first node to execute to specify where to enter the graph.
+The entry point is the first node(s) that are run when the graph starts. You can use the `add_edge` method from the virtual `START` node to the first node to execute to specify where to enter the graph.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.graph import START
 
 graph.add_edge(START, "node_a")
@@ -791,9 +769,9 @@ graph.add_edge(START, "node_a")
 
 ### Conditional entry point
 
-A conditional entry point lets you start at different nodes depending on custom logic. You can use [`add_conditional_edges`](https://reference.langchain.com/python/langgraph/graph/state/StateGraph/add_conditional_edges) from the virtual [`START`](https://reference.langchain.com/python/langgraph/constants/START) node to accomplish this.
+A conditional entry point lets you start at different nodes depending on custom logic. You can use `add_conditional_edges` from the virtual `START` node to accomplish this.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.graph import START
 
 graph.add_conditional_edges(START, routing_function)
@@ -801,17 +779,17 @@ graph.add_conditional_edges(START, routing_function)
 
 You can optionally provide a dictionary that maps the `routing_function`'s output to the name of the next node.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 graph.add_conditional_edges(START, routing_function, {True: "node_b", False: "node_c"})
 ```
 
 ## `Send`
 
-By default, `Nodes` and `Edges` are defined ahead of time and operate on the same shared state. However, there can be cases where the exact edges are not known ahead of time and/or you may want different versions of `State` to exist at the same time. A common example of this is with [map-reduce](/oss/python/langgraph/use-graph-api#map-reduce-and-the-send-api) design patterns. In this design pattern, a first node may generate a list of objects, and you may want to apply some other node to all those objects. The number of objects may be unknown ahead of time (meaning the number of edges may not be known) and the input `State` to the downstream `Node` should be different (one for each generated object).
+By default, `Nodes` and `Edges` are defined ahead of time and operate on the same shared state. However, there can be cases where the exact edges are not known ahead of time and/or you may want different versions of `State` to exist at the same time. A common example of this is with map-reduce design patterns. In this design pattern, a first node may generate a list of objects, and you may want to apply some other node to all those objects. The number of objects may be unknown ahead of time (meaning the number of edges may not be known) and the input `State` to the downstream `Node` should be different (one for each generated object).
 
-To support this design pattern, LangGraph supports returning [`Send`](https://reference.langchain.com/python/langgraph/types/Send) objects from conditional edges. `Send` takes two arguments: first is the name of the node, and second is the state to pass to that node.
+To support this design pattern, LangGraph supports returning `Send` objects from conditional edges. `Send` takes two arguments: first is the name of the node, and second is the state to pass to that node.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.types import Send
 
 def continue_to_jokes(state: OverallState):
@@ -822,26 +800,26 @@ graph.add_conditional_edges("node_a", continue_to_jokes)
 
 ## `Command`
 
-[`Command`](https://reference.langchain.com/python/langgraph/types/Command) is a versatile primitive for controlling graph execution. It accepts four parameters:
+`Command` is a versatile primitive for controlling graph execution. It accepts four parameters:
 
 * `update`: Apply state updates (similar to returning updates from a node).
-* `goto`: Navigate to specific nodes (similar to [conditional edges](#conditional-edges)).
-* `graph`: Target a parent graph when navigating from [subgraphs](/oss/python/langgraph/use-subgraphs).
-* `resume`: Provide a value to resume execution after an [interrupt](/oss/python/langgraph/interrupts).
+* `goto`: Navigate to specific nodes (similar to conditional edges).
+* `graph`: Target a parent graph when navigating from subgraphs.
+* `resume`: Provide a value to resume execution after an interrupt.
 
 `Command` is used in three contexts:
 
-* **[Return from nodes](#return-from-nodes)**: Use `update`, `goto`, and `graph` to combine state updates with control flow.
-* **[Input to `invoke` or `stream`](#input-to-invoke-or-stream)**: Use `resume` to continue execution after an interrupt.
-* **[Return from tools](#return-from-tools)**: Similar to return from nodes, combine state updates and control flow from inside a tool.
+* **Return from nodes**: Use `update`, `goto`, and `graph` to combine state updates with control flow.
+* **Input to `invoke` or `stream`**: Use `resume` to continue execution after an interrupt.
+* **Return from tools**: Similar to return from nodes, combine state updates and control flow from inside a tool.
 
 ### Return from nodes
 
 #### `update` and `goto`
 
-Return [`Command`](https://reference.langchain.com/python/langgraph/types/Command) from node functions to update state and route to the next node in a single step:
+Return `Command` from node functions to update state and route to the next node in a single step:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 def my_node(state: State) -> Command[Literal["my_other_node"]]:
     return Command(
         # state update
@@ -851,31 +829,27 @@ def my_node(state: State) -> Command[Literal["my_other_node"]]:
     )
 ```
 
-With [`Command`](https://reference.langchain.com/python/langgraph/types/Command) you can also achieve dynamic control flow behavior (identical to [conditional edges](#conditional-edges)):
+With `Command` you can also achieve dynamic control flow behavior (identical to conditional edges):
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 def my_node(state: State) -> Command[Literal["my_other_node"]]:
     if state["foo"] == "bar":
         return Command(update={"foo": "baz"}, goto="my_other_node")
 ```
 
-Use [`Command`](https://reference.langchain.com/python/langgraph/types/Command) when you need to **both** update state **and** route to a different node. If you only need to route without updating state, use [conditional edges](#conditional-edges) instead.
+Use `Command` when you need to **both** update state **and** route to a different node. If you only need to route without updating state, use conditional edges instead.
 
-<Note>
-  When returning [`Command`](https://reference.langchain.com/python/langgraph/types/Command) in your node functions, you must add return type annotations with the list of node names the node is routing to, e.g. `Command[Literal["my_other_node"]]`. This is necessary for the graph rendering and tells LangGraph that `my_node` can navigate to `my_other_node`.
-</Note>
+When returning `Command` in your node functions, you must add return type annotations with the list of node names the node is routing to, e.g. `Command[Literal["my_other_node"]]`. This is necessary for the graph rendering and tells LangGraph that `my_node` can navigate to `my_other_node`.
 
-<Warning>
-  [`Command`](https://reference.langchain.com/python/langgraph/types/Command) only adds dynamic edges—static edges defined with `add_edge` / `addEdge` still execute. For example, if `node_a` returns `Command(goto="my_other_node")` and you also have `graph.add_edge("node_a", "node_b")`, both `node_b` and `my_other_node` will run. For each node, use either [`Command`](https://reference.langchain.com/python/langgraph/types/Command) or static edges to route to the next nodes, not both.
-</Warning>
+`Command` only adds dynamic edges—static edges defined with `add_edge` / `addEdge` still execute. For example, if `node_a` returns `Command(goto="my_other_node")` and you also have `graph.add_edge("node_a", "node_b")`, both `node_b` and `my_other_node` will run. For each node, use either `Command` or static edges to route to the next nodes, not both.
 
-Check out this [how-to guide](/oss/python/langgraph/use-graph-api#combine-control-flow-and-state-updates-with-command) for an end-to-end example of how to use [`Command`](https://reference.langchain.com/python/langgraph/types/Command).
+Check out this how-to guide for an end-to-end example of how to use `Command`.
 
 #### `graph`
 
-If you are using [subgraphs](/oss/python/langgraph/use-subgraphs), you can navigate from a node within a subgraph to a different node in the parent graph by specifying `graph=Command.PARENT` in [`Command`](https://reference.langchain.com/python/langgraph/types/Command):
+If you are using subgraphs, you can navigate from a node within a subgraph to a different node in the parent graph by specifying `graph=Command.PARENT` in `Command`:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 def my_node(state: State) -> Command[Literal["other_subgraph"]]:
     return Command(
         update={"foo": "bar"},
@@ -884,38 +858,34 @@ def my_node(state: State) -> Command[Literal["other_subgraph"]]:
     )
 ```
 
-<Note>
-  Setting `graph` to `Command.PARENT` will navigate to the closest parent graph.
+Setting `graph` to `Command.PARENT` will navigate to the closest parent graph.
 
-  When you send updates from a subgraph node to a parent graph node for a key that's shared by both parent and subgraph [state schemas](#schema), you **must** define a [reducer](#reducers) for the key you're updating in the parent graph state. See this [example](/oss/python/langgraph/use-graph-api#navigate-to-a-node-in-a-parent-graph).
-</Note>
+When you send updates from a subgraph node to a parent graph node for a key that's shared by both parent and subgraph state schemas, you **must** define a reducer for the key you're updating in the parent graph state. See this example.
 
-This is particularly useful when implementing [multi-agent handoffs](/oss/python/langchain/multi-agent/handoffs). Check out [Navigate to a node in a parent graph](/oss/python/langgraph/use-graph-api#navigate-to-a-node-in-a-parent-graph) for detail.
+This is particularly useful when implementing multi-agent handoffs. Check out Navigate to a node in a parent graph for detail.
 
 ### Input to `invoke` or `stream`
 
-<Warning>
-  `Command(resume=...)` is the **only** `Command` pattern intended as input to `invoke()`/`stream()` (optionally combined with `update=...` to also apply a state change while resuming). Do not use `Command(update=...)` alone as input to continue multi-turn conversations—because passing any `Command` as input resumes from the latest checkpoint (i.e. the last step that ran, not `__start__`), the graph will appear stuck if it already finished. To continue a conversation on an existing thread, pass a plain input dict:
+`Command(resume=...)` is the **only** `Command` pattern intended as input to `invoke()`/`stream()` (optionally combined with `update=...` to also apply a state change while resuming). Do not use `Command(update=...)` alone as input to continue multi-turn conversations—because passing any `Command` as input resumes from the latest checkpoint (i.e. the last step that ran, not `__start__`), the graph will appear stuck if it already finished. To continue a conversation on an existing thread, pass a plain input dict:
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   # WRONG - graph resumes from the latest checkpoint
   # (last step that ran), appears stuck
-  graph.invoke(Command(update={  # [!code --]
-      "messages": [{"role": "user", "content": "follow up"}]  # [!code --]
-  }), config)  # [!code --]
+  graph.invoke(Command(update={
+      "messages": [{"role": "user", "content": "follow up"}]
+  }), config)
 
   # CORRECT - plain dict restarts from __start__
-  graph.invoke( {  # [!code ++]
-      "messages": [{"role": "user", "content": "follow up"}]  # [!code ++]
-  }, config)  # [!code ++]
+  graph.invoke( {
+      "messages": [{"role": "user", "content": "follow up"}]
+  }, config)
   ```
-</Warning>
 
 #### `resume`
 
-Use `Command(resume=...)` to provide a value and resume graph execution after an [interrupt](/oss/python/langgraph/interrupts). The value passed to `resume` becomes the return value of the `interrupt()` call inside the paused node:
+Use `Command(resume=...)` to provide a value and resume graph execution after an interrupt. The value passed to `resume` becomes the return value of the `interrupt()` call inside the paused node:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from typing import TypedDict
 
 from langgraph.checkpoint.memory import InMemorySaver
@@ -953,17 +923,15 @@ resumed = graph.stream_events(Command(resume="yes"), config, version="v3")
 final = resumed.output
 ```
 
-Check out the [interrupts conceptual guide](/oss/python/langgraph/interrupts) for full details on interrupt patterns, including multiple interrupts and validation loops.
+Check out the interrupts conceptual guide for full details on interrupt patterns, including multiple interrupts and validation loops.
 
 ### Return from tools
 
-You can return [`Command`](https://reference.langchain.com/python/langgraph/types/Command) from tools to update graph state and control flow. Use `update` to modify state (e.g., saving customer information looked up during a conversation) and `goto` to route to a specific node after the tool completes.
+You can return `Command` from tools to update graph state and control flow. Use `update` to modify state (e.g., saving customer information looked up during a conversation) and `goto` to route to a specific node after the tool completes.
 
-<Warning>
-  When used inside tools, `goto` adds a dynamic edge—any static edges already defined on the node that called the tool will still execute. For each node, use either tool-driven dynamic routing or static edges to route to the next nodes, not both.
-</Warning>
+When used inside tools, `goto` adds a dynamic edge—any static edges already defined on the node that called the tool will still execute. For each node, use either tool-driven dynamic routing or static edges to route to the next nodes, not both.
 
-Refer to [Use inside tools](/oss/python/langgraph/use-graph-api#use-inside-tools) for detail.
+Refer to Use inside tools for detail.
 
 ## Graph migrations
 
@@ -975,16 +943,14 @@ LangGraph can easily handle migrations of graph definitions (nodes, edges, and s
 * State keys that are renamed lose their saved state in existing threads
 * State keys whose types change in incompatible ways could currently cause issues in threads with state from before the change -- if this is a blocker please reach out and we can prioritize a solution.
 
-<Tip>
-  For changes that are technically compatible but alter business logic, such as rewriting the tool set or restructuring conversation flow, see [Business compatibility](/oss/python/langgraph/backward-compatibility#business-compatibility). That page covers pinning a behavioral version in state so existing threads keep the old path while new threads pick up the latest version.
-</Tip>
+For changes that are technically compatible but alter business logic, such as rewriting the tool set or restructuring conversation flow, see Business compatibility. That page covers pinning a behavioral version in state so existing threads keep the old path while new threads pick up the latest version.
 
 ## Runtime context
 
 When creating a graph, you can specify a `context_schema` for runtime context passed to nodes. This is useful for passing
 information to nodes that is not part of the graph state. For example, you might want to pass dependencies such as model name or a database connection.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 @dataclass
 class ContextSchema:
     llm_provider: str = "openai"
@@ -994,13 +960,13 @@ graph = StateGraph(State, context_schema=ContextSchema)
 
 You can then pass this context into the graph using the `context` parameter of the `invoke` method.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 graph.invoke(inputs, context={"llm_provider": "anthropic"})
 ```
 
 You can then access and use this context inside a node or conditional edge:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.runtime import Runtime
 
 def node_a(state: State, runtime: Runtime[ContextSchema]):
@@ -1008,17 +974,17 @@ def node_a(state: State, runtime: Runtime[ContextSchema]):
     # ...
 ```
 
-See [Add runtime configuration](/oss/python/langgraph/use-graph-api#add-runtime-configuration) for a full breakdown on configuration.
+See Add runtime configuration for a full breakdown on configuration.
 
 ### Recursion limit
 
-The recursion limit sets the maximum number of [super-steps](#graphs) the graph can execute during a single execution. Once the limit is reached, LangGraph will raise `GraphRecursionError`. Starting in version 1.0.6, the default recursion limit is set to 1000 steps. The recursion limit can be set on any graph at runtime, and is passed to `invoke`/`stream` via the config dictionary. Importantly, `recursion_limit` is a standalone `config` key and should not be passed inside the `configurable` key as all other user-defined configuration. See the example below:
+The recursion limit sets the maximum number of super-steps the graph can execute during a single execution. Once the limit is reached, LangGraph will raise `GraphRecursionError`. Starting in version 1.0.6, the default recursion limit is set to 1000 steps. The recursion limit can be set on any graph at runtime, and is passed to `invoke`/`stream` via the config dictionary. Importantly, `recursion_limit` is a standalone `config` key and should not be passed inside the `configurable` key as all other user-defined configuration. See the example below:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 graph.invoke(inputs, config={"recursion_limit": 5}, context={"llm": "anthropic"})
 ```
 
-Read [Recursion limit](/oss/python/langgraph/graph-api#recursion-limit) to learn more about how the recursion limit works.
+Read Recursion limit to learn more about how the recursion limit works.
 
 ### Accessing and handling the recursion counter
 
@@ -1032,7 +998,7 @@ The step counter is stored in `config["metadata"]["langgraph_step"]`. LangGraph 
 
 You can access the current step counter within any node to monitor execution progress.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph
 
@@ -1046,7 +1012,7 @@ def my_node(state: dict, config: RunnableConfig) -> dict:
 
 LangGraph provides a `RemainingSteps` managed value that tracks how many steps remain before hitting the recursion limit. This allows for graceful degradation within your graph.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from typing import Annotated, Literal
 from langgraph.graph import StateGraph, START, END
 from langgraph.managed import RemainingSteps
@@ -1094,7 +1060,7 @@ result = graph.invoke({"messages": []}, {"recursion_limit": 10})
 
 There are two main approaches to handling recursion limits: proactive (monitoring within the graph) and reactive (catching errors externally).
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from typing import Annotated, Literal, TypedDict
 from langgraph.graph import StateGraph, START, END
 from langgraph.managed import RemainingSteps
@@ -1165,7 +1131,7 @@ The key differences between these approaches are:
 
 Along with `langgraph_step`, the following metadata is also available in `config["metadata"]`:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 def inspect_metadata(state: dict, config: RunnableConfig) -> dict:
     metadata = config["metadata"]
 
@@ -1180,15 +1146,14 @@ def inspect_metadata(state: dict, config: RunnableConfig) -> dict:
 
 ## Visualization
 
-It's often nice to be able to visualize graphs, especially as they get more complex. LangGraph comes with several built-in ways to visualize graphs. See [Visualize your graph](/oss/python/langgraph/use-graph-api#visualize-your-graph) for more info.
+It's often nice to be able to visualize graphs, especially as they get more complex. LangGraph comes with several built-in ways to visualize graphs. See Visualize your graph for more info.
 
 ## Observability and Tracing
 
-To trace, debug and evaluate your agents, use [LangSmith](/langsmith/observability).
+To trace, debug and evaluate your agents, use LangSmith.
 
 ## Learn more
 
-* [How to use the Graph API](/oss/python/langgraph/use-graph-api)
-* [Functional API conceptual overview](/oss/python/langgraph/functional-api)
-* [Choosing between Graph API and Functional API](/oss/python/langgraph/choosing-apis)
-
+* How to use the Graph API
+* Functional API conceptual overview
+* Choosing between Graph API and Functional API

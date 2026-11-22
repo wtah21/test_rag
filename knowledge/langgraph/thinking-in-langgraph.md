@@ -17,7 +17,7 @@ In this walkthrough, we'll guide you through the thought process of building a c
 
 Imagine that you need to build an AI agent that handles customer support emails. Your product team has given you these requirements:
 
-```txt theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```txt
 The agent should:
 
 - Read incoming customer emails
@@ -42,7 +42,7 @@ To implement an agent in LangGraph, you will usually follow the same five steps.
 
 Start by identifying the distinct steps in your process. Each step will become a **node** (a function that does one specific thing). Then, sketch how these steps connect to each other.
 
-```mermaid theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```mermaid
 flowchart TD
     A[START] --> B[Read Email]
     B --> C[Classify Intent]
@@ -77,115 +77,88 @@ Now that we've identified the components in our workflow, let's understand what 
 * `Human Review`: Escalate to human agent for approval or handling
 * `Send Reply`: Dispatch the email response
 
-<Tip>
-  Notice that some nodes make decisions about where to go next (`Classify Intent`, `Draft Reply`, `Human Review`), while others always proceed to the same next step (`Read Email` always goes to `Classify Intent`, `Doc Search` always goes to `Draft Reply`).
-</Tip>
+Notice that some nodes make decisions about where to go next (`Classify Intent`, `Draft Reply`, `Human Review`), while others always proceed to the same next step (`Read Email` always goes to `Classify Intent`, `Doc Search` always goes to `Draft Reply`).
 
 ## Step 2: Identify what each step needs to do
 
 For each node in your graph, determine what type of operation it represents and what context it needs to work properly.
 
-<CardGroup cols={2}>
-  <Card title="LLM steps" icon="brain" href="#llm-steps">
+LLM steps
     Use when you need to understand, analyze, generate text, or make reasoning decisions
-  </Card>
 
-  <Card title="Data steps" icon="database" href="#data-steps">
+Data steps
     Use when you need to retrieve information from external sources
-  </Card>
 
-  <Card title="Action steps" icon="bolt" href="#action-steps">
+Action steps
     Use when you need to perform external actions
-  </Card>
 
-  <Card title="User input steps" icon="user" href="#user-input-steps">
+User input steps
     Use when you need human intervention
-  </Card>
-</CardGroup>
 
 ### LLM steps
 
 When a step needs to understand, analyze, generate text, or make reasoning decisions:
 
-<AccordionGroup>
-  <Accordion title="Classify intent">
+Classify intent
     * Static context (prompt): Classification categories, urgency definitions, response format
     * Dynamic context (from state): Email content, sender information
     * Desired outcome: Structured classification that determines routing
-  </Accordion>
 
-  <Accordion title="Draft reply">
+Draft reply
     * Static context (prompt): Tone guidelines, company policies, response templates
     * Dynamic context (from state): Classification results, search results, customer history
     * Desired outcome: Professional email response ready for review
-  </Accordion>
-</AccordionGroup>
 
 ### Data steps
 
 When a step needs to retrieve information from external sources:
 
-<AccordionGroup>
-  <Accordion title="Document search">
+Document search
     * Parameters: Query built from intent and topic
     * Retry strategy: Yes, with exponential backoff for transient failures
     * Caching: Could cache common queries to reduce API calls
-  </Accordion>
 
-  <Accordion title="Customer history lookup">
+Customer history lookup
     * Parameters: Customer email or ID from state
     * Retry strategy: Yes, but with fallback to basic info if unavailable
     * Caching: Yes, with time-to-live to balance freshness and performance
-  </Accordion>
-</AccordionGroup>
 
 ### Action steps
 
 When a step needs to perform an external action:
 
-<AccordionGroup>
-  <Accordion title="Send reply">
+Send reply
     * When to execute node: After approval (human or automated)
     * Retry strategy: Yes, with exponential backoff for network issues
     * Should not cache: Each send is a unique action
-  </Accordion>
 
-  <Accordion title="Bug track">
+Bug track
     * When to execute node: Always when intent is "bug"
     * Retry strategy: Yes, critical to not lose bug reports
     * Returns: Ticket ID to include in response
-  </Accordion>
-</AccordionGroup>
 
 ### User input steps
 
 When a step needs human intervention:
 
-<AccordionGroup>
-  <Accordion title="Human review node">
+Human review node
     * Context for decision: Original email, draft response, urgency, classification
     * Expected input format: Approval boolean plus optional edited response
     * When triggered: High urgency, complex issues, or quality concerns
-  </Accordion>
-</AccordionGroup>
 
 ## Step 3: Design your state
 
-State is the shared [memory](/oss/python/concepts/memory) accessible to all nodes in your agent. Think of it as the notebook your agent uses to keep track of everything it learns and decides as it works through the process.
+State is the shared memory accessible to all nodes in your agent. Think of it as the notebook your agent uses to keep track of everything it learns and decides as it works through the process.
 
 ### What belongs in state?
 
 Ask yourself these questions about each piece of data:
 
-<CardGroup cols={2}>
-  <Card title="Include in state" icon="check">
+Include in state
     Does it need to persist across steps? If yes, it goes in state.
-  </Card>
 
-  <Card title="Don't store" icon="code">
+Don't store
     Can you derive it from other data? If yes, compute it when needed instead of storing it in state.
-  </Card>
-</CardGroup>
 
 For our email agent, we need to track:
 
@@ -197,9 +170,7 @@ For our email agent, we need to track:
 
 ### Keep state raw, format prompts on-demand
 
-<Tip>
-  A key principle: your state should store raw data, not formatted text. Format prompts inside nodes when you need them.
-</Tip>
+A key principle: your state should store raw data, not formatted text. Format prompts inside nodes when you need them.
 
 This separation means:
 
@@ -210,7 +181,7 @@ This separation means:
 
 Let's define our state:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from typing import TypedDict, Literal
 
 # Define the structure for email classification
@@ -256,13 +227,11 @@ Different errors need different handling strategies:
 | Recoverable failure after retries                               | Developer (declarative) | `error_handler`                    | Run a compensation/recovery branch after retry exhaustion |
 | Unexpected errors                                               | Developer               | Let them bubble up                 | Unknown issues that need debugging                        |
 
-<Tabs>
-  <Tab title="Transient errors" icon="rotate">
     Add a retry policy to automatically retry network issues and rate limits.
 
-    Combine with `timeout=` to cap each attempt. See [Fault tolerance](/oss/python/langgraph/fault-tolerance) for the full lifecycle.
+    Combine with `timeout=` to cap each attempt. See Fault tolerance for the full lifecycle.
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langgraph.types import RetryPolicy
 
     workflow.add_node(
@@ -271,12 +240,10 @@ Different errors need different handling strategies:
         retry_policy=RetryPolicy(max_attempts=3, initial_interval=1.0)
     )
     ```
-  </Tab>
 
-  <Tab title="LLM-recoverable" icon="brain">
     Store the error in state and loop back so the LLM can see what went wrong and try again:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langgraph.types import Command
 
 
@@ -291,12 +258,10 @@ Different errors need different handling strategies:
                 goto="agent"
             )
     ```
-  </Tab>
 
-  <Tab title="User-fixable" icon="user">
     Pause and collect information from the user when needed (like account IDs, order numbers, or clarifications):
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langgraph.types import Command
 
 
@@ -316,30 +281,24 @@ Different errors need different handling strategies:
         customer_data = fetch_customer_history(state['customer_id'])
         return Command(update={"customer_history": customer_data}, goto="draft_response")
     ```
-  </Tab>
 
-  <Tab title="Unexpected" icon="alert-triangle">
     Let them bubble up for debugging. Don't catch what you can't handle:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     def send_reply(state: EmailAgentState):
         try:
             email_service.send(state["draft_response"])
         except Exception:
             raise  # Surface unexpected errors
     ```
-  </Tab>
 
-  <Tab title="Saga / compensation" icon="arrows-exchange">
     After retries are exhausted, run a recovery function that updates state and routes to a compensation branch.
 
-    See [Fault tolerance](/oss/python/langgraph/fault-tolerance#error-handling) for the full pattern.
+    See Fault tolerance for the full pattern.
 
-    <Note>
       `error_handler` requires `langgraph>=1.2`.
-    </Note>
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langgraph.errors import NodeError
     from langgraph.types import Command, RetryPolicy
 
@@ -357,17 +316,14 @@ Different errors need different handling strategies:
     )
     ```
 
-    To apply the same `retry_policy`, `timeout`, or `error_handler` to every node in a graph without repeating them on each `add_node`, use `StateGraph.set_node_defaults(...)`. Per-node values still take precedence. See [Fault tolerance](/oss/python/langgraph/fault-tolerance#graph-defaults).
-  </Tab>
-</Tabs>
+    To apply the same `retry_policy`, `timeout`, or `error_handler` to every node in a graph without repeating them on each `add_node`, use `StateGraph.set_node_defaults(...)`. Per-node values still take precedence. See Fault tolerance.
 
 ### Implementing our email agent nodes
 
 We'll implement each node as a simple function. Remember: nodes take state, do work, and return updates.
 
-<AccordionGroup>
-  <Accordion title="Read and classify nodes" icon="brain">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Read and classify nodes
+    ```python
     from typing import Literal
     from langgraph.graph import StateGraph, START, END
     from langgraph.types import interrupt, Command, RetryPolicy
@@ -418,10 +374,9 @@ We'll implement each node as a simple function. Remember: nodes take state, do w
             goto=goto
         )
     ```
-  </Accordion>
 
-  <Accordion title="Search and tracking nodes" icon="database">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Search and tracking nodes
+    ```python
     def search_documentation(state: EmailAgentState) -> Command[Literal["draft_response"]]:
         """Search knowledge base for relevant information"""
 
@@ -460,10 +415,9 @@ We'll implement each node as a simple function. Remember: nodes take state, do w
             goto="draft_response"
         )
     ```
-  </Accordion>
 
-  <Accordion title="Response nodes" icon="edit">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Response nodes
+    ```python
     def draft_response(state: EmailAgentState) -> Command[Literal["human_review", "send_reply"]]:
         """Generate response using context and route based on quality"""
 
@@ -544,17 +498,15 @@ We'll implement each node as a simple function. Remember: nodes take state, do w
         print(f"Sending reply: {state['draft_response'][:100]}...")
         return {}
     ```
-  </Accordion>
-</AccordionGroup>
 
 ## Step 5: Wire it together
 
 Now we connect our nodes into a working graph. Since our nodes handle their own routing decisions, we only need a few essential edges.
 
-To enable [human-in-the-loop](/oss/python/langgraph/interrupts) with `interrupt()`, we need to compile with a [checkpointer](/oss/python/langgraph/persistence) to save state between runs:
+To enable human-in-the-loop with `interrupt()`, we need to compile with a checkpointer to save state between runs:
 
-<Accordion title="Graph compilation code" icon="sitemap" defaultOpen={true}>
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Graph compilation code
+  ```python
   from langgraph.checkpoint.memory import MemorySaver
   from langgraph.types import RetryPolicy
 
@@ -585,16 +537,15 @@ To enable [human-in-the-loop](/oss/python/langgraph/interrupts) with `interrupt(
   memory = MemorySaver()
   app = workflow.compile(checkpointer=memory)
   ```
-</Accordion>
 
-The graph structure is minimal because routing happens inside nodes through [`Command`](https://reference.langchain.com/python/langgraph/types/Command) objects. Each node declares where it can go using type hints like `Command[Literal["node1", "node2"]]`, making the flow explicit and traceable.
+The graph structure is minimal because routing happens inside nodes through `Command` objects. Each node declares where it can go using type hints like `Command[Literal["node1", "node2"]]`, making the flow explicit and traceable.
 
 ### Try out your agent
 
 Let's run our agent with an urgent billing issue that needs human review:
 
-<Accordion title="Testing the agent" icon="flask">
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Testing the agent
+  ```python
   from typing import TypedDict
 
   from langgraph.checkpoint.memory import InMemorySaver
@@ -649,7 +600,6 @@ Let's run our agent with an urgent billing issue that needs human review:
   final_state = resumed.output
   print("Email sent successfully!")
   ```
-</Accordion>
 
 The graph pauses when it hits `interrupt()`, saves everything to the checkpointer, and waits. It can resume days later, picking up exactly where it left off. The `thread_id` ensures all state for this conversation is preserved together.
 
@@ -659,92 +609,74 @@ The graph pauses when it hits `interrupt()`, saves everything to the checkpointe
 
 Building this email agent has shown us the LangGraph way of thinking:
 
-<CardGroup cols={2}>
-  <Card title="Break into discrete steps" icon="sitemap" href="#step-1-map-out-your-workflow-as-discrete-steps">
+Break into discrete steps
     Each node does one thing well. This decomposition enables streaming progress updates, durable execution that can pause and resume, and clear debugging since you can inspect state between steps.
-  </Card>
 
-  <Card title="State is shared memory" icon="database" href="#step-3-design-your-state">
+State is shared memory
     Store raw data, not formatted text. This lets different nodes use the same information in different ways.
-  </Card>
 
-  <Card title="Nodes are functions" icon="code" href="#step-4-build-your-nodes">
+Nodes are functions
     They take state, do work, and return updates. When they need to make routing decisions, they specify both the state updates and the next destination.
-  </Card>
 
-  <Card title="Errors are part of the flow" icon="alert-triangle" href="#handle-errors-appropriately">
+Errors are part of the flow
     Transient failures get retries, LLM-recoverable errors loop back with context, user-fixable problems pause for input, and unexpected errors bubble up for debugging.
-  </Card>
 
-  <Card title="Human input is first-class" icon="user" href="/oss/python/langgraph/interrupts">
+Human input is first-class
     The `interrupt()` function pauses execution indefinitely, saves all state, and resumes exactly where it left off when you provide input. When combined with other operations in a node, it must come first.
-  </Card>
 
-  <Card title="Graph structure emerges naturally" icon="sitemap" href="#step-5-wire-it-together">
+Graph structure emerges naturally
     You define the essential connections, and your nodes handle their own routing logic. This keeps control flow explicit and traceable - you can always understand what your agent will do next by looking at the current node.
-  </Card>
-</CardGroup>
 
 ### Advanced considerations
 
-<Accordion title="Node granularity trade-offs" icon="adjustments">
-  <Info>
+Node granularity trade-offs
+
     This section explores the trade-offs in node granularity design. Most applications can skip this and use the patterns shown above.
-  </Info>
 
-  You might wonder: why not combine `Read Email` and `Classify Intent` into one node?
+You might wonder: why not combine `Read Email` and `Classify Intent` into one node?
 
-  Or why separate Doc Search from Draft Reply?
+Or why separate Doc Search from Draft Reply?
 
-  The answer involves trade-offs between resilience and observability.
+The answer involves trade-offs between resilience and observability.
 
-  **The resilience consideration:** LangGraph's [persistence layer](/oss/python/langgraph/persistence) creates checkpoints at node boundaries. When a workflow resumes after an interruption or failure, it starts from the beginning of the node where execution stopped. Smaller nodes mean more frequent checkpoints, which means less work to repeat if something goes wrong. If you combine multiple operations into one large node, a failure near the end means re-executing everything from the start of that node.
+**The resilience consideration:** LangGraph's persistence layer creates checkpoints at node boundaries. When a workflow resumes after an interruption or failure, it starts from the beginning of the node where execution stopped. Smaller nodes mean more frequent checkpoints, which means less work to repeat if something goes wrong. If you combine multiple operations into one large node, a failure near the end means re-executing everything from the start of that node.
 
-  Why we chose this breakdown for the email agent:
+Why we chose this breakdown for the email agent:
 
-  * **Isolation of external services:** Doc Search and Bug Track are separate nodes because they call external APIs. If the search service is slow or fails, we want to isolate that from the LLM calls. We can add retry policies to these specific nodes without affecting others.
+* **Isolation of external services:** Doc Search and Bug Track are separate nodes because they call external APIs. If the search service is slow or fails, we want to isolate that from the LLM calls. We can add retry policies to these specific nodes without affecting others.
 
-  * **Intermediate visibility:** Having `Classify Intent` as its own node lets us inspect what the LLM decided before taking action. This is valuable for debugging and monitoring—you can see exactly when and why the agent routes to human review.
+* **Intermediate visibility:** Having `Classify Intent` as its own node lets us inspect what the LLM decided before taking action. This is valuable for debugging and monitoring—you can see exactly when and why the agent routes to human review.
 
-  * **Different failure modes:** LLM calls, database lookups, and email sending have different retry strategies. Separate nodes let you configure these independently.
+* **Different failure modes:** LLM calls, database lookups, and email sending have different retry strategies. Separate nodes let you configure these independently.
 
-  * **Reusability and testing:** Smaller nodes are easier to test in isolation and reuse in other workflows.
+* **Reusability and testing:** Smaller nodes are easier to test in isolation and reuse in other workflows.
 
-  A different valid approach: You could combine `Read Email` and `Classify Intent` into a single node. You'd lose the ability to inspect the raw email before classification and would repeat both operations on any failure in that node. For most applications, the observability and debugging benefits of separate nodes are worth the trade-off.
+A different valid approach: You could combine `Read Email` and `Classify Intent` into a single node. You'd lose the ability to inspect the raw email before classification and would repeat both operations on any failure in that node. For most applications, the observability and debugging benefits of separate nodes are worth the trade-off.
 
-  Application-level concerns: The caching discussion in Step 2 (whether to cache search results) is an application-level decision, not a LangGraph framework feature. You implement caching within your node functions based on your specific requirements—LangGraph doesn't prescribe this.
+Application-level concerns: The caching discussion in Step 2 (whether to cache search results) is an application-level decision, not a LangGraph framework feature. You implement caching within your node functions based on your specific requirements—LangGraph doesn't prescribe this.
 
-  Performance considerations: More nodes doesn't mean slower execution. LangGraph writes checkpoints in the background by default ([async durability mode](/oss/python/langgraph/checkpointers#durability-modes)), so your graph continues running without waiting for checkpoints to complete. This means you get frequent checkpoints with minimal performance impact. You can adjust this behavior if needed—use `"exit"` mode to checkpoint only at completion, or `"sync"` mode to block execution until each checkpoint is written.
-</Accordion>
+Performance considerations: More nodes doesn't mean slower execution. LangGraph writes checkpoints in the background by default (async durability mode), so your graph continues running without waiting for checkpoints to complete. This means you get frequent checkpoints with minimal performance impact. You can adjust this behavior if needed—use `"exit"` mode to checkpoint only at completion, or `"sync"` mode to block execution until each checkpoint is written.
 
 ### Where to go from here
 
 This was an introduction to thinking about building agents with LangGraph. You can extend this foundation with:
 
-<CardGroup cols={2}>
-  <Card title="Human-in-the-loop patterns" icon="user-check" href="/oss/python/langgraph/interrupts">
+Human-in-the-loop patterns
     Learn how to add tool approval before execution, batch approval, and other patterns
-  </Card>
 
-  <Card title="Subgraphs" icon="hierarchy" href="/oss/python/langgraph/use-subgraphs">
+Subgraphs
     Create subgraphs for complex multi-step operations
-  </Card>
 
-  <Card title="Streaming" icon="broadcast" href="/oss/python/langgraph/streaming">
+Streaming
     Add streaming to show real-time progress to users
-  </Card>
 
-  <Card title="Observability" icon="chart-line" href="/oss/python/langgraph/observability">
+Observability
     Add observability with LangSmith for debugging and monitoring
-  </Card>
 
-  <Card title="Tool Integration" icon="tool" href="/oss/python/langchain/tools">
+Tool Integration
     Integrate more tools for web search, database queries, and API calls
-  </Card>
 
-  <Card title="Retry Logic" icon="rotate" href="/oss/python/langgraph/use-graph-api#add-retry-policies">
+Retry Logic
     Implement retry logic with exponential backoff for failed operations
-  </Card>
-</CardGroup>
 
 ***

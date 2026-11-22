@@ -19,25 +19,17 @@ Common use cases include:
 * Enforcing business rules and compliance requirements
 * Validating output quality and accuracy
 
-You can implement guardrails using [middleware](/oss/python/langchain/middleware) to intercept execution at strategic points - before the agent starts, after it completes, or around model and tool calls.
-
-<div style={{ display: "flex", justifyContent: "center" }}>
-  <img src="https://mintcdn.com/langchain-5e9cc07a/RAP6mjwE5G00xYsA/oss/images/middleware_final.png?fit=max&auto=format&n=RAP6mjwE5G00xYsA&q=85&s=eb4404b137edec6f6f0c8ccb8323eaf1" alt="Middleware flow diagram" className="rounded-lg" width="500" height="560" data-path="oss/images/middleware_final.png" />
-</div>
+You can implement guardrails using middleware to intercept execution at strategic points - before the agent starts, after it completes, or around model and tool calls.
 
 Guardrails can be implemented using two complementary approaches:
 
-<CardGroup cols={2}>
-  <Card title="Deterministic guardrails" icon="list-check">
+Deterministic guardrails
     Use rule-based logic like regex patterns, keyword matching, or explicit checks. Fast, predictable, and cost-effective, but may miss nuanced violations.
-  </Card>
 
-  <Card title="Model-based guardrails" icon="brain">
+Model-based guardrails
     Use LLMs or classifiers to evaluate content with semantic understanding. Catch subtle issues that rules miss, but are slower and more expensive.
-  </Card>
-</CardGroup>
 
-LangChain provides both built-in guardrails (e.g., [PII detection](#pii-detection), [human-in-the-loop](#human-in-the-loop)) and a flexible middleware system for building custom guardrails using either approach.
+LangChain provides both built-in guardrails (e.g., PII detection, human-in-the-loop) and a flexible middleware system for building custom guardrails using either approach.
 
 ## Built-in guardrails
 
@@ -56,11 +48,9 @@ The PII middleware supports multiple strategies for handling detected PII:
 | `hash`   | Replace with deterministic hash         | `a8f5f167...`         |
 | `block`  | Raise exception when detected           | Error thrown          |
 
-<Note>
-  With `apply_to_output=True`, `PIIMiddleware` also redacts streamed wire output—text deltas, tool-call args, tool outputs, and state snapshots—via a registered stream transformer. Requires `langchain>=1.3.2`. See [Register transformers on middleware](/oss/python/langchain/event-streaming#register-transformers-on-middleware).
-</Note>
+With `apply_to_output=True`, `PIIMiddleware` also redacts streamed wire output—text deltas, tool-call args, tool outputs, and state snapshots—via a registered stream transformer. Requires `langchain>=1.3.2`. See Register transformers on middleware.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import PIIMiddleware
 
@@ -97,28 +87,27 @@ result = agent.invoke({
 })
 ```
 
-<Accordion title="Built-in PII types and configuration">
-  **Built-in PII types:**
+Built-in PII types and configuration
+**Built-in PII types:**
 
-  * `email` - Email addresses
-  * `credit_card` - Credit card numbers (Luhn validated)
-  * `ip` - IP addresses
-  * `mac_address` - MAC addresses
-  * `url` - URLs
+* `email` - Email addresses
+* `credit_card` - Credit card numbers (Luhn validated)
+* `ip` - IP addresses
+* `mac_address` - MAC addresses
+* `url` - URLs
 
-  **Configuration options:**
+**Configuration options:**
 
-  | Parameter               | Description                                                            | Default                |
-  | ----------------------- | ---------------------------------------------------------------------- | ---------------------- |
-  | `pii_type`              | Type of PII to detect (built-in or custom)                             | Required               |
-  | `strategy`              | How to handle detected PII (`"block"`, `"redact"`, `"mask"`, `"hash"`) | `"redact"`             |
-  | `detector`              | Custom detector function or regex pattern                              | `None` (uses built-in) |
-  | `apply_to_input`        | Check user messages before model call                                  | `True`                 |
-  | `apply_to_output`       | Check AI messages after model call                                     | `False`                |
-  | `apply_to_tool_results` | Check tool result messages after execution                             | `False`                |
-</Accordion>
+| Parameter               | Description                                                            | Default                |
+| ----------------------- | ---------------------------------------------------------------------- | ---------------------- |
+| `pii_type`              | Type of PII to detect (built-in or custom)                             | Required               |
+| `strategy`              | How to handle detected PII (`"block"`, `"redact"`, `"mask"`, `"hash"`) | `"redact"`             |
+| `detector`              | Custom detector function or regex pattern                              | `None` (uses built-in) |
+| `apply_to_input`        | Check user messages before model call                                  | `True`                 |
+| `apply_to_output`       | Check AI messages after model call                                     | `False`                |
+| `apply_to_tool_results` | Check tool result messages after execution                             | `False`                |
 
-See the [middleware documentation](/oss/python/langchain/middleware#pii-detection) for complete details on PII detection capabilities.
+See the middleware documentation for complete details on PII detection capabilities.
 
 ### Human-in-the-loop
 
@@ -126,7 +115,7 @@ LangChain provides built-in middleware for requiring human approval before execu
 
 Human-in-the-loop middleware is helpful for cases such as financial transactions and transfers, deleting or modifying production data, sending communications to external parties, and any operation with significant business impact.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 from langgraph.checkpoint.memory import InMemorySaver
@@ -166,9 +155,7 @@ result = agent.invoke(
 )
 ```
 
-<Tip>
-  See the [human-in-the-loop documentation](/oss/python/langchain/human-in-the-loop) for complete details on implementing approval workflows.
-</Tip>
+See the human-in-the-loop documentation for complete details on implementing approval workflows.
 
 ## Custom guardrails
 
@@ -178,8 +165,7 @@ For more sophisticated guardrails, you can create custom middleware that runs be
 
 Use "before agent" hooks to validate requests once at the start of each invocation. This is useful for session-level checks like authentication, rate limiting, or blocking inappropriate requests before any processing begins.
 
-<CodeGroup>
-  ```python title="Class syntax" theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python title="Class syntax"
   from typing import Any
 
   from langchain.agents.middleware import AgentMiddleware, AgentState, hook_config
@@ -237,7 +223,7 @@ Use "before agent" hooks to validate requests once at the start of each invocati
   })
   ```
 
-  ```python title="Decorator syntax" theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python title="Decorator syntax"
   from typing import Any
 
   from langchain.agents.middleware import before_agent, AgentState, hook_config
@@ -286,14 +272,12 @@ Use "before agent" hooks to validate requests once at the start of each invocati
       "messages": [{"role": "user", "content": "How do I hack into a database?"}]
   })
   ```
-</CodeGroup>
 
 ### After agent guardrails
 
 Use "after agent" hooks to validate final outputs once before returning to the user. This is useful for model-based safety checks, quality validation, or final compliance scans on the complete agent response.
 
-<CodeGroup>
-  ```python title="Class syntax" theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python title="Class syntax"
   from langchain.agents.middleware import AgentMiddleware, AgentState, hook_config
   from langgraph.runtime import Runtime
   from langchain.messages import AIMessage
@@ -344,7 +328,7 @@ Use "after agent" hooks to validate final outputs once before returning to the u
   })
   ```
 
-  ```python title="Decorator syntax" theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python title="Decorator syntax"
   from langchain.agents.middleware import after_agent, AgentState, hook_config
   from langgraph.runtime import Runtime
   from langchain.messages import AIMessage
@@ -390,13 +374,12 @@ Use "after agent" hooks to validate final outputs once before returning to the u
       "messages": [{"role": "user", "content": "How do I make explosives?"}]
   })
   ```
-</CodeGroup>
 
 ### Combine multiple guardrails
 
 You can stack multiple guardrails by adding them to the middleware array. They execute in order, allowing you to build layered protection:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import PIIMiddleware, HumanInTheLoopMiddleware
 
@@ -422,9 +405,9 @@ agent = create_agent(
 
 ## Additional resources
 
-* [Middleware documentation](/oss/python/langchain/middleware) - Complete guide to custom middleware
-* [Middleware API reference](https://reference.langchain.com/python/langchain/middleware/) - Complete guide to custom middleware
-* [Human-in-the-loop](/oss/python/langchain/human-in-the-loop) - Add human review for sensitive operations
-* [Testing agents](/oss/python/langchain/test/) - Strategies for testing safety mechanisms
+* Middleware documentation - Complete guide to custom middleware
+* Middleware API reference - Complete guide to custom middleware
+* Human-in-the-loop - Add human review for sensitive operations
+* Testing agents - Strategies for testing safety mechanisms
 
 ***

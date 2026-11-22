@@ -7,22 +7,22 @@ url: https://docs.langchain.com/oss/python/integrations/splitters/recursive_text
 
 # Splitting recursively - Text splitter integration guide
 
-This [text splitter](/oss/python/integrations/splitters/) is the recommended one for generic text. It is parameterized by a list of characters. It tries to split on them in order until the chunks are small enough. The default list is `["\n\n", "\n", " ", ""]`. This has the effect of trying to keep all paragraphs (and then sentences, and then words) together as long as possible, as those would generically seem to be the strongest semantically related pieces of text.
+This text splitter is the recommended one for generic text. It is parameterized by a list of characters. It tries to split on them in order until the chunks are small enough. The default list is `["\n\n", "\n", " ", ""]`. This has the effect of trying to keep all paragraphs (and then sentences, and then words) together as long as possible, as those would generically seem to be the strongest semantically related pieces of text.
 
 1. How the text is split: by list of characters.
 2. How the chunk size is measured: by number of characters.
 
 Below we show example usage.
 
-```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```shell
 pip install -qU langchain-text-splitters
 ```
 
 To obtain the string content directly, use `.split_text`.
 
-To create LangChain [Document](https://reference.langchain.com/python/langchain-core/documents/base/Document) objects (e.g., for use in downstream tasks), use `.create_documents`.
+To create LangChain Document objects (e.g., for use in downstream tasks), use `.create_documents`.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # Load example document
@@ -41,16 +41,16 @@ print(texts[0])
 print(texts[1])
 ```
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 page_content='Madam Speaker, Madam Vice President, our First Lady and Second Gentleman. Members of Congress and'
 page_content='of Congress and the Cabinet. Justices of the Supreme Court. My fellow Americans.'
 ```
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 print(text_splitter.split_text(state_of_the_union)[:2])
 ```
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 ['Madam Speaker, Madam Vice President, our First Lady and Second Gentleman. Members of Congress and',
  'of Congress and the Cabinet. Justices of the Supreme Court. My fellow Americans.']
 ```
@@ -64,13 +64,13 @@ Let's go through the parameters set above for `RecursiveCharacterTextSplitter`:
 
 ## Splitting text from languages without word boundaries
 
-Some writing systems do not have [word boundaries](https://en.wikipedia.org/wiki/Category:Writing_systems_without_word_boundaries), for example Chinese, Japanese, and Thai. Splitting text with the default separator list of `["\n\n", "\n", " ", ""]` can cause words to be split between chunks. To keep words together, you can override the list of separators to include additional punctuation:
+Some writing systems do not have word boundaries, for example Chinese, Japanese, and Thai. Splitting text with the default separator list of `["\n\n", "\n", " ", ""]` can cause words to be split between chunks. To keep words together, you can override the list of separators to include additional punctuation:
 
-* Add ASCII full-stop "`.`", [Unicode fullwidth](https://en.wikipedia.org/wiki/Halfwidth_and_Fullwidth_Forms_\(Unicode_block\)) full stop "`．`" (used in Chinese text), and [ideographic full stop](https://en.wikipedia.org/wiki/CJK_Symbols_and_Punctuation) "`。`" (used in Japanese and Chinese)
-* Add [Zero-width space](https://en.wikipedia.org/wiki/Zero-width_space) used in Thai, Myanmar, Kmer, and Japanese.
+* Add ASCII full-stop "`.`", Unicode fullwidth) full stop "`．`" (used in Chinese text), and ideographic full stop "`。`" (used in Japanese and Chinese)
+* Add Zero-width space used in Thai, Myanmar, Kmer, and Japanese.
 * Add ASCII comma "`,`", Unicode fullwidth comma "`，`", and Unicode ideographic comma "`、`"
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 text_splitter = RecursiveCharacterTextSplitter(
     separators=[
         "\n\n",

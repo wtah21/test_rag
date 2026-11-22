@@ -31,6 +31,9 @@ dependencies = [
     "rapidfuzz>=3.14.5",
     "semantic-router>=0.1.16,<1.0",
     "requests>=2.31.0",
+    "onnxruntime>=1.18",
+    "transformers>=4.40",
+    "torch>=2.7",
 ]
 
 [project.optional-dependencies]
@@ -64,6 +67,7 @@ module = [
     "pymilvus",
     "milvus_model.*",
     "langmem.*",
+    "onnxruntime",
 ]
 ignore_missing_imports = true
 
@@ -98,3 +102,12 @@ convention = "google"
 pythonpath = [
   "src"
 ]
+
+# CUDA 版 torch 统一从 PyTorch 官方源解析（RTX 50 系需要 cu128 及以上）
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }

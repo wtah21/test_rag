@@ -12,27 +12,23 @@ This guide reviews common workflow and agent patterns.
 * Workflows have predetermined code paths and are designed to operate in a certain order.
 * Agents are dynamic and define their own processes and tool usage.
 
-<img src="https://mintcdn.com/langchain-5e9cc07a/-_xGPoyjhyiDWTPJ/oss/images/agent_workflow.png?fit=max&auto=format&n=-_xGPoyjhyiDWTPJ&q=85&s=c217c9ef517ee556cae3fc928a21dc55" alt="Agent Workflow" width="4572" height="2047" data-path="oss/images/agent_workflow.png" />
+LangGraph offers several benefits when building agents and workflows, including persistence, streaming, and support for debugging as well as deployment.
 
-LangGraph offers several benefits when building agents and workflows, including [persistence](/oss/python/langgraph/persistence), [streaming](/oss/python/langgraph/streaming), and support for debugging as well as [deployment](/oss/python/langgraph/deploy).
-
-<Tip>
-  Trace and compare these workflow patterns with [LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-langgraph-workflows-agents). Follow the [tracing quickstart](/langsmith/trace-with-langgraph) to see how data flows through each step. We recommend you also set up [LangSmith Engine](/langsmith/engine) which monitors your traces, detects issues, and proposes fixes.
-</Tip>
+Trace and compare these workflow patterns with LangSmith. Follow the tracing quickstart to see how data flows through each step. We recommend you also set up LangSmith Engine which monitors your traces, detects issues, and proposes fixes.
 
 ## Setup
 
-To build a workflow or agent, you can use [any chat model](/oss/python/integrations/chat) that supports structured outputs and tool calling. The following example uses Anthropic:
+To build a workflow or agent, you can use any chat model that supports structured outputs and tool calling. The following example uses Anthropic:
 
 1. Install dependencies:
 
-```bash theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```bash
 pip install langchain_core langchain-anthropic langgraph
 ```
 
 2. Initialize the LLM:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import os
 import getpass
 
@@ -50,11 +46,9 @@ llm = ChatAnthropic(model="claude-sonnet-4-6")
 
 ## LLMs and augmentations
 
-Workflows and agentic systems are based on LLMs and the various augmentations you add to them. [Tool calling](/oss/python/langchain/tools), [structured outputs](/oss/python/langchain/structured-output), and [short term memory](/oss/python/langchain/short-term-memory) are a few options for tailoring LLMs to your needs.
+Workflows and agentic systems are based on LLMs and the various augmentations you add to them. Tool calling, structured outputs, and short term memory are a few options for tailoring LLMs to your needs.
 
-<img src="https://mintcdn.com/langchain-5e9cc07a/-_xGPoyjhyiDWTPJ/oss/images/augmented_llm.png?fit=max&auto=format&n=-_xGPoyjhyiDWTPJ&q=85&s=7ea9656f46649b3ebac19e8309ae9006" alt="LLM augmentations" width="1152" height="778" data-path="oss/images/augmented_llm.png" />
-
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 # Schema for structured output
 from pydantic import BaseModel, Field
 
@@ -93,10 +87,7 @@ Prompt chaining is when each LLM call processes the output of the previous call.
 * Translating documents into different languages
 * Verifying generated content for consistency
 
-<img src="https://mintcdn.com/langchain-5e9cc07a/dL5Sn6Cmy9pwtY0V/oss/images/prompt_chain.png?fit=max&auto=format&n=dL5Sn6Cmy9pwtY0V&q=85&s=762dec147c31b8dc6ebb0857e236fc1f" alt="Prompt chaining" width="1412" height="444" data-path="oss/images/prompt_chain.png" />
-
-<CodeGroup>
-  ```python Graph API theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Graph API
   from typing_extensions import TypedDict
   from langgraph.graph import StateGraph, START, END
   from IPython.display import Image, display
@@ -179,7 +170,7 @@ Prompt chaining is when each LLM call processes the output of the previous call.
       print(state["joke"])
   ```
 
-  ```python Functional API theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Functional API
   from langgraph.func import entrypoint, task
 
 
@@ -229,7 +220,6 @@ Prompt chaining is when each LLM call processes the output of the previous call.
       print(snapshot)
       print("\n")
   ```
-</CodeGroup>
 
 ## Parallelization
 
@@ -243,10 +233,7 @@ Some examples include:
 * Running one subtask that processes a document for keywords, and a second subtask to check for formatting errors
 * Running a task multiple times that scores a document for accuracy based on different criteria, like the number of citations, the number of sources used, and the quality of the sources
 
-<img src="https://mintcdn.com/langchain-5e9cc07a/dL5Sn6Cmy9pwtY0V/oss/images/parallelization.png?fit=max&auto=format&n=dL5Sn6Cmy9pwtY0V&q=85&s=8afe3c427d8cede6fed1e4b2a5107b71" alt="parallelization.png" width="1020" height="684" data-path="oss/images/parallelization.png" />
-
-<CodeGroup>
-  ```python Graph API theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Graph API
   # Graph state
   class State(TypedDict):
       topic: str
@@ -315,7 +302,7 @@ Some examples include:
   print(state["combined_output"])
   ```
 
-  ```python Functional API theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Functional API
   @task
   def call_llm_1(topic: str):
       """First LLM call to generate initial joke"""
@@ -364,16 +351,12 @@ Some examples include:
       print(snapshot)
       print("\n")
   ```
-</CodeGroup>
 
 ## Routing
 
 Routing workflows process inputs and then directs them to context-specific tasks. This allows you to define specialized flows for complex tasks. For example, a workflow built to answer product related questions might process the type of question first, and then route the request to specific processes for pricing, refunds, returns, etc.
 
-<img src="https://mintcdn.com/langchain-5e9cc07a/dL5Sn6Cmy9pwtY0V/oss/images/routing.png?fit=max&auto=format&n=dL5Sn6Cmy9pwtY0V&q=85&s=272e0e9b681b89cd7d35d5c812c50ee6" alt="routing.png" width="1214" height="678" data-path="oss/images/routing.png" />
-
-<CodeGroup>
-  ```python Graph API theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Graph API
   from typing_extensions import Literal
   from langchain.messages import HumanMessage, SystemMessage
 
@@ -480,7 +463,7 @@ Routing workflows process inputs and then directs them to context-specific tasks
   print(state["output"])
   ```
 
-  ```python Functional API theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Functional API
   from typing_extensions import Literal
   from pydantic import BaseModel
   from langchain.messages import HumanMessage, SystemMessage
@@ -551,7 +534,6 @@ Routing workflows process inputs and then directs them to context-specific tasks
       print(snapshot)
       print("\n")
   ```
-</CodeGroup>
 
 ## Orchestrator-worker
 
@@ -561,12 +543,9 @@ In an orchestrator-worker configuration, the orchestrator:
 * Delegates subtasks to workers
 * Synthesizes worker outputs into a final result
 
-<img src="https://mintcdn.com/langchain-5e9cc07a/ybiAaBfoBvFquMDz/oss/images/worker.png?fit=max&auto=format&n=ybiAaBfoBvFquMDz&q=85&s=2e423c67cd4f12e049cea9c169ff0676" alt="worker.png" width="1486" height="548" data-path="oss/images/worker.png" />
+Orchestrator-worker workflows provide more flexibility and are often used when subtasks cannot be predefined the way they can with parallelization. This is common with workflows that write code or need to update content across multiple files. For example, a workflow that needs to update installation instructions for multiple Python libraries across an unknown number of documents might use this pattern.
 
-Orchestrator-worker workflows provide more flexibility and are often used when subtasks cannot be predefined the way they can with [parallelization](#parallelization). This is common with workflows that write code or need to update content across multiple files. For example, a workflow that needs to update installation instructions for multiple Python libraries across an unknown number of documents might use this pattern.
-
-<CodeGroup>
-  ```python Graph API theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Graph API
   from typing import Annotated, List
   import operator
 
@@ -591,7 +570,7 @@ Orchestrator-worker workflows provide more flexibility and are often used when s
   planner = llm.with_structured_output(Sections)
   ```
 
-  ```python Functional API theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Functional API
   from typing import List
 
 
@@ -668,13 +647,12 @@ Orchestrator-worker workflows provide more flexibility and are often used when s
   from IPython.display import Markdown
   Markdown(report)
   ```
-</CodeGroup>
 
 ### Creating workers in LangGraph
 
 Orchestrator-worker workflows are common and LangGraph has built-in support for them. The `Send` API lets you dynamically create worker nodes and send them specific inputs. Each worker has its own state, and all worker outputs are written to a shared state key that is accessible to the orchestrator graph. This gives the orchestrator access to all worker output and allows it to synthesize them into a final output. The example below iterates over a list of sections and uses the `Send` API to send a section to each worker.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.types import Send
 
 
@@ -779,14 +757,11 @@ Markdown(state["final_report"])
 
 ## Evaluator-optimizer
 
-In evaluator-optimizer workflows, one LLM call creates a response and the other evaluates that response. If the evaluator or a [human-in-the-loop](/oss/python/langgraph/interrupts) determines the response needs refinement, feedback is provided and the response is recreated. This loop continues until an acceptable response is generated.
+In evaluator-optimizer workflows, one LLM call creates a response and the other evaluates that response. If the evaluator or a human-in-the-loop determines the response needs refinement, feedback is provided and the response is recreated. This loop continues until an acceptable response is generated.
 
 Evaluator-optimizer workflows are commonly used when there's particular success criteria for a task, but iteration is required to meet that criteria. For example, there's not always a perfect match when translating text between two languages. It might take a few iterations to generate a translation with the same meaning across the two languages.
 
-<img src="https://mintcdn.com/langchain-5e9cc07a/-_xGPoyjhyiDWTPJ/oss/images/evaluator_optimizer.png?fit=max&auto=format&n=-_xGPoyjhyiDWTPJ&q=85&s=9bd0474f42b6040b14ed6968a9ab4e3c" alt="evaluator_optimizer.png" width="1004" height="340" data-path="oss/images/evaluator_optimizer.png" />
-
-<CodeGroup>
-  ```python Graph API theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Graph API
   # Graph state
   class State(TypedDict):
       joke: str
@@ -869,7 +844,7 @@ Evaluator-optimizer workflows are commonly used when there's particular success 
   print(state["joke"])
   ```
 
-  ```python Functional API theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Functional API
   # Schema for structured output to use in evaluation
   class Feedback(BaseModel):
       grade: Literal["funny", "not funny"] = Field(
@@ -921,19 +896,14 @@ Evaluator-optimizer workflows are commonly used when there's particular success 
       print(snapshot)
       print("\n")
   ```
-</CodeGroup>
 
 ## Agents
 
-Agents are typically implemented as an LLM performing actions using [tools](/oss/python/langchain/tools). They operate in continuous feedback loops, and are used in situations where problems and solutions are unpredictable. Agents have more autonomy than workflows, and can make decisions about the tools they use and how to solve problems. You can still define the available toolset and guidelines for how agents behave.
+Agents are typically implemented as an LLM performing actions using tools. They operate in continuous feedback loops, and are used in situations where problems and solutions are unpredictable. Agents have more autonomy than workflows, and can make decisions about the tools they use and how to solve problems. You can still define the available toolset and guidelines for how agents behave.
 
-<img src="https://mintcdn.com/langchain-5e9cc07a/-_xGPoyjhyiDWTPJ/oss/images/agent.png?fit=max&auto=format&n=-_xGPoyjhyiDWTPJ&q=85&s=bd8da41dbf8b5e6fc9ea6bb10cb63e38" alt="agent.png" width="1732" height="712" data-path="oss/images/agent.png" />
+To get started with agents, see the quickstart or read more about how they work in LangChain.
 
-<Note>
-  To get started with agents, see the [quickstart](/oss/python/langchain/quickstart) or read more about [how they work](/oss/python/langchain/agents) in LangChain.
-</Note>
-
-```python Using tools theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python Using tools
 from langchain.tools import tool
 
 
@@ -977,8 +947,7 @@ tools_by_name = {tool.name: tool for tool in tools}
 llm_with_tools = llm.bind_tools(tools)
 ```
 
-<CodeGroup>
-  ```python Graph API theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Graph API
   from langgraph.graph import MessagesState
   from langchain.messages import SystemMessage, HumanMessage, ToolMessage
 
@@ -1056,7 +1025,7 @@ llm_with_tools = llm.bind_tools(tools)
       m.pretty_print()
   ```
 
-  ```python Functional API theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Functional API
   from langgraph.graph import add_messages
   from langchain.messages import (
       SystemMessage,
@@ -1112,15 +1081,14 @@ llm_with_tools = llm.bind_tools(tools)
       print(snapshot)
       print("\n")
   ```
-</CodeGroup>
 
 ### ToolNode
 
-[`ToolNode`](https://reference.langchain.com/python/langgraph/agents/#langgraph.prebuilt.tool_node.ToolNode) is a prebuilt node that executes tools in LangGraph workflows. It handles parallel tool execution, error handling, and state injection automatically.
+`ToolNode` is a prebuilt node that executes tools in LangGraph workflows. It handles parallel tool execution, error handling, and state injection automatically.
 
-Use [`ToolNode`](https://reference.langchain.com/python/langgraph/agents/#langgraph.prebuilt.tool_node.ToolNode) when you need fine-grained control over how your graph executes tools. This is the building block that powers tool execution in many LangGraph agent patterns.
+Use `ToolNode` when you need fine-grained control over how your graph executes tools. This is the building block that powers tool execution in many LangGraph agent patterns.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.tools import tool
 from langgraph.prebuilt import ToolNode
 from langgraph.graph import MessagesState, StateGraph
@@ -1148,21 +1116,19 @@ their first argument. To read graph-side data that was not generated by the
 model, use one of these options:
 
 * In Python, read state and run-scoped context from the injected
-  [`ToolRuntime`](https://reference.langchain.com/python/langchain/tools/#langchain.tools.ToolRuntime) argument.
+`ToolRuntime` argument.
 * In JavaScript, read state and run-scoped context from the tool's second
-  argument, typed as [`ToolRuntime`](https://reference.langchain.com/python/langchain/tools/#langchain.tools.ToolRuntime).
+argument, typed as `ToolRuntime`.
 
-<Note>
-  Tools can only access the state values passed to the `ToolNode`. When
-  `ToolNode` is added directly as a `StateGraph` node, that input is the current
-  graph state. If you invoke a `ToolNode` manually from another node, pass the
-  full state when tools need custom state fields. For example, `tool_node.invoke(state)`
-  or `toolNode.invoke(state, config)` exposes the full state, while passing only
-  `{"messages": state["messages"]}` or `{ messages: state.messages }` only exposes
-  `messages`.
-</Note>
+Tools can only access the state values passed to the `ToolNode`. When
+`ToolNode` is added directly as a `StateGraph` node, that input is the current
+graph state. If you invoke a `ToolNode` manually from another node, pass the
+full state when tools need custom state fields. For example, `tool_node.invoke(state)`
+or `toolNode.invoke(state, config)` exposes the full state, while passing only
+`{"messages": state["messages"]}` or `{ messages: state.messages }` only exposes
+`messages`.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from dataclasses import dataclass
 
 from langchain.messages import AIMessage

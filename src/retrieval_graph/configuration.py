@@ -196,11 +196,11 @@ class AgentConfiguration(BaseConfiguration):
 
     rerank_enabled: bool = field(
         default=True,
-        metadata={"description": "是否在 RRF 融合后启用智谱 cross-encoder 重排。"},
+        metadata={"description": "是否在 RRF 融合后启用本地 cross-encoder 重排。"},
     )
 
     rerank_candidates: int = field(
-        default=20,
+        default=30,
         metadata={"description": "RRF 融合后送进重排的候选文档数。"},
     )
 

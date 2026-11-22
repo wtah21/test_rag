@@ -11,11 +11,11 @@ url: https://docs.langchain.com/oss/python/integrations/document_transformers/cr
 
 A cross-encoder scores each `(query, document)` pair directly rather than comparing independent embeddings, which produces more accurate ordering at the cost of one extra inference per document. Applying a reranker on top of vector search (retrieve top-20 via embeddings, rerank down to top-5) is one of the highest-impact quality improvements for a RAG pipeline, and it runs locally on CPU for free when you use a small cross-encoder from Hugging Face.
 
-This guide shows how to combine `HuggingFaceCrossEncoder` with LangChain's `CrossEncoderReranker` and `ContextualCompressionRetriever`. The pattern works with any [cross-encoder model on Hugging Face](https://huggingface.co/models?pipeline_tag=text-ranking), including `BAAI/bge-reranker-*`, `mixedbread-ai/mxbai-rerank-*`, `Alibaba-NLP/gte-multilingual-reranker-*`, `Qwen/Qwen3-Reranker-*`, and the classic `cross-encoder/ms-marco-*` family.
+This guide shows how to combine `HuggingFaceCrossEncoder` with LangChain's `CrossEncoderReranker` and `ContextualCompressionRetriever`. The pattern works with any cross-encoder model on Hugging Face, including `BAAI/bge-reranker-*`, `mixedbread-ai/mxbai-rerank-*`, `Alibaba-NLP/gte-multilingual-reranker-*`, `Qwen/Qwen3-Reranker-*`, and the classic `cross-encoder/ms-marco-*` family.
 
 ## Setup
 
-```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```shell
 pip install -qU langchain-huggingface langchain-community langchain-classic faiss-cpu
 ```
 
@@ -23,11 +23,9 @@ pip install -qU langchain-huggingface langchain-community langchain-classic fais
 
 Start with a standard vector store retriever. Retrieve a relatively large `k`; the reranker will narrow it down.
 
-<Warning>
-  The `langchain-community` package is no longer maintained. Examples that import from `langchain_community` may be outdated or broken. Use with caution.
-</Warning>
+The `langchain-community` package is no longer maintained. Examples that import from `langchain_community` may be outdated or broken. Use with caution.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_community.document_loaders import TextLoader
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -50,7 +48,7 @@ retriever = FAISS.from_documents(texts, embeddings).as_retriever(
 
 `CrossEncoderReranker` wraps any cross-encoder and plugs into `ContextualCompressionRetriever`.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_classic.retrievers.contextual_compression import ContextualCompressionRetriever
 from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
@@ -82,9 +80,9 @@ for i, doc in enumerate(compressed_docs, 1):
 
 ## Deploying to SageMaker
 
-You can also host a cross-encoder on a SageMaker endpoint and use `SagemakerEndpointCrossEncoder`. Here is a sample `inference.py` that loads the model on the fly (no `model.tar.gz` artifacts required). See [this walkthrough](https://huggingface.co/blog/kchoe/deploy-any-huggingface-model-to-sagemaker) for step-by-step guidance.
+You can also host a cross-encoder on a SageMaker endpoint and use `SagemakerEndpointCrossEncoder`. Here is a sample `inference.py` that loads the model on the fly (no `model.tar.gz` artifacts required). See this walkthrough for step-by-step guidance.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import json
 import logging
 from typing import List

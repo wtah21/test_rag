@@ -13,9 +13,9 @@ Unit tests exercise small, deterministic pieces of your agent in isolation. By r
 
 ## Mock chat model
 
-LangChain provides [`GenericFakeChatModel`](https://reference.langchain.com/python/langchain-core/language_models/fake_chat_models/GenericFakeChatModel) for mocking text responses. It accepts an iterator of responses ([`AIMessage`](https://reference.langchain.com/python/langchain-core/messages/ai/AIMessage) objects or strings) and returns one per invocation. It supports both regular and streaming usage.
+LangChain provides `GenericFakeChatModel` for mocking text responses. It accepts an iterator of responses (`AIMessage` objects or strings) and returns one per invocation. It supports both regular and streaming usage.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 
 model = GenericFakeChatModel(messages=iter([
@@ -29,16 +29,16 @@ model.invoke("hello")
 
 If we invoke the model again, it will return the next item in the iterator:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 model.invoke("hello, again!")
 # AIMessage(content='bar', ...)
 ```
 
 ## InMemorySaver checkpointer
 
-To enable persistence during testing, you can use the [`InMemorySaver`](https://reference.langchain.com/python/langgraph/checkpoints/#langgraph.checkpoint.memory.InMemorySaver) checkpointer. This allows you to simulate multiple turns to test state-dependent behavior:
+To enable persistence during testing, you can use the `InMemorySaver` checkpointer. This allows you to simulate multiple turns to test state-dependent behavior:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.checkpoint.memory import InMemorySaver
 
 agent = create_agent(
@@ -62,6 +62,6 @@ agent.invoke(
 
 ## Next steps
 
-Learn how to test your agent with real model provider APIs in [Integration testing](/oss/python/langchain/test/integration-testing).
+Learn how to test your agent with real model provider APIs in Integration testing.
 
 ***

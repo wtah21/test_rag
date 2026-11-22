@@ -7,37 +7,35 @@ url: https://docs.langchain.com/oss/python/langgraph/functional-api
 
 # Functional API overview
 
-The **Functional API** allows you to add LangGraph's key features ([persistence](/oss/python/langgraph/persistence), [memory](/oss/python/langgraph/add-memory), [human-in-the-loop](/oss/python/langgraph/interrupts), and [streaming](/oss/python/langgraph/streaming)) to your applications with minimal changes to your existing code.
+The **Functional API** allows you to add LangGraph's key features (persistence, memory, human-in-the-loop, and streaming) to your applications with minimal changes to your existing code.
 
 It is designed to integrate these features into existing code that may use standard language primitives for branching and control flow, such as `if` statements, `for` loops, and function calls. Unlike many data orchestration frameworks that require restructuring code into an explicit pipeline or DAG, the Functional API allows you to incorporate these capabilities without enforcing a rigid execution model.
 
 The Functional API uses two key building blocks:
 
 * **`@entrypoint`**: Marks a function as the starting point of a workflow, encapsulating logic and managing execution flow, including handling long-running tasks and interrupts.
-* **[`@task`](https://reference.langchain.com/python/langgraph/func/task)**: Represents a discrete unit of work, such as an API call or data processing step, that can be executed asynchronously within an entrypoint. Tasks return a future-like object that can be awaited or resolved synchronously.
+* **`@task`**: Represents a discrete unit of work, such as an API call or data processing step, that can be executed asynchronously within an entrypoint. Tasks return a future-like object that can be awaited or resolved synchronously.
 
 This provides a minimal abstraction for building workflows with state management and streaming.
 
-<Tip>
-  For information on how to use the functional API, see [Use Functional API](/oss/python/langgraph/use-functional-api).
-</Tip>
+For information on how to use the functional API, see Use Functional API.
 
 ## Functional API vs. Graph API
 
-For users who prefer a more declarative approach, LangGraph's [Graph API](/oss/python/langgraph/graph-api) allows you to define workflows using a Graph paradigm. Both APIs share the same underlying runtime, so you can use them together in the same application.
+For users who prefer a more declarative approach, LangGraph's Graph API allows you to define workflows using a Graph paradigm. Both APIs share the same underlying runtime, so you can use them together in the same application.
 
 Here are some key differences:
 
 * **Control flow**: The Functional API does not require thinking about graph structure. You can use standard Python constructs to define workflows. This will usually trim the amount of code you need to write.
-* **Short-term memory**: The **GraphAPI** requires declaring a [**State**](/oss/python/langgraph/graph-api#state) and may require defining [**reducers**](/oss/python/langgraph/graph-api#reducers) to manage updates to the graph state. `@entrypoint` and `@tasks` do not require explicit state management as their state is scoped to the function and is not shared across functions.
-* **Checkpointing**: Both APIs generate and use checkpoints. In the **Graph API** a new checkpoint is generated after every [superstep](/oss/python/langgraph/graph-api). In the **Functional API**, when tasks are executed, their results are saved to an existing checkpoint associated with the given entrypoint instead of creating a new checkpoint.
+* **Short-term memory**: The **GraphAPI** requires declaring a **State** and may require defining **reducers** to manage updates to the graph state. `@entrypoint` and `@tasks` do not require explicit state management as their state is scoped to the function and is not shared across functions.
+* **Checkpointing**: Both APIs generate and use checkpoints. In the **Graph API** a new checkpoint is generated after every superstep. In the **Functional API**, when tasks are executed, their results are saved to an existing checkpoint associated with the given entrypoint instead of creating a new checkpoint.
 * **Visualization**: The Graph API makes it easy to visualize the workflow as a graph which can be useful for debugging, understanding the workflow, and sharing with others. The Functional API does not support visualization as the graph is dynamically generated during runtime.
 
 ## Example
 
-Below we demonstrate a simple application that writes an essay and [interrupts](/oss/python/langgraph/interrupts) to request human review.
+Below we demonstrate a simple application that writes an essay and interrupts to request human review.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.func import entrypoint, task
 from langgraph.types import interrupt
@@ -68,12 +66,12 @@ def workflow(topic: str) -> dict:
     }
 ```
 
-<Accordion title="Detailed Explanation">
-  This workflow will write an essay about the topic "cat" and then pause to get a review from a human. The workflow can be interrupted for an indefinite amount of time until a review is provided.
+Detailed Explanation
+This workflow will write an essay about the topic "cat" and then pause to get a review from a human. The workflow can be interrupted for an indefinite amount of time until a review is provided.
 
-  When the workflow is resumed, it executes from the very start, but because the result of the `writeEssay` task was already saved, the task result will be loaded from the checkpoint instead of being recomputed.
+When the workflow is resumed, it executes from the very start, but because the result of the `writeEssay` task was already saved, the task result will be loaded from the checkpoint instead of being recomputed.
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   import time
 
   from langchain_core.utils.uuid import uuid7
@@ -130,9 +128,9 @@ def workflow(topic: str) -> dict:
   # }
   ```
 
-  An essay has been written and is ready for review. Once the review is provided, we can resume the workflow:
+An essay has been written and is ready for review. Once the review is provided, we can resume the workflow:
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   # Get review from a user (e.g., via a UI)
   # In this case, we're using a bool, but this can be any json-serializable value.
   human_review = True
@@ -142,12 +140,11 @@ def workflow(topic: str) -> dict:
   # {'essay': 'An essay about topic: cat', 'is_approved': True}
   ```
 
-  The workflow has been completed and the review has been added to the essay.
-</Accordion>
+The workflow has been completed and the review has been added to the essay.
 
 ## Entrypoint
 
-The [`@entrypoint`](https://reference.langchain.com/python/langgraph/func/entrypoint) decorator can be used to create a workflow from a function. It encapsulates workflow logic and manages execution flow, including handling *long-running tasks* and [interrupts](/oss/python/langgraph/interrupts).
+The `@entrypoint` decorator can be used to create a workflow from a function. It encapsulates workflow logic and manages execution flow, including handling *long-running tasks* and interrupts.
 
 ### Definition
 
@@ -155,13 +152,11 @@ An **entrypoint** is defined by decorating a function with the `@entrypoint` dec
 
 The function **must accept a single positional argument**, which serves as the workflow input. If you need to pass multiple pieces of data, use a dictionary as the input type for the first argument.
 
-Decorating a function with an `entrypoint` produces a [`Pregel`](https://reference.langchain.com/python/langgraph/pregel/#langgraph.pregel.Pregel.stream) instance which helps to manage the execution of the workflow (e.g., handles streaming, resumption, and checkpointing).
+Decorating a function with an `entrypoint` produces a `Pregel` instance which helps to manage the execution of the workflow (e.g., handles streaming, resumption, and checkpointing).
 
 You will usually want to pass a **checkpointer** to the `@entrypoint` decorator to enable persistence and use features like **human-in-the-loop**.
 
-<Tabs>
-  <Tab title="Sync">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langgraph.func import entrypoint
 
     @entrypoint(checkpointer=checkpointer)
@@ -171,10 +166,8 @@ You will usually want to pass a **checkpointer** to the `@entrypoint` decorator 
         ...
         return result
     ```
-  </Tab>
 
-  <Tab title="Async">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langgraph.func import entrypoint
 
     @entrypoint(checkpointer=checkpointer)
@@ -184,13 +177,9 @@ You will usually want to pass a **checkpointer** to the `@entrypoint` decorator 
         ...
         return result
     ```
-  </Tab>
-</Tabs>
 
-<Warning>
-  **Serialization**
-  The **inputs** and **outputs** of entrypoints must be JSON-serializable to support checkpointing. Please see the [serialization](#serialization) section for more details.
-</Warning>
+**Serialization**
+The **inputs** and **outputs** of entrypoints must be JSON-serializable to support checkpointing. Please see the serialization section for more details.
 
 ### Injectable parameters
 
@@ -198,17 +187,15 @@ When declaring an `entrypoint`, you can request access to additional parameters 
 
 | Parameter    | Description                                                                                                                                                                 |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **previous** | Access the state associated with the previous `checkpoint` for the given thread. See [short-term-memory](#short-term-memory).                                               |
-| **store**    | An instance of \[BaseStore]\[langgraph.store.base.BaseStore]. Useful for [long-term memory](/oss/python/langgraph/use-functional-api#long-term-memory).                     |
-| **writer**   | Use to access the StreamWriter when working with Async Python \< 3.11. See [streaming with functional API for details](/oss/python/langgraph/use-functional-api#streaming). |
-| **config**   | For accessing run time configuration. See [RunnableConfig](https://python.langchain.com/docs/concepts/runnables/#runnableconfig) for information.                           |
+| **previous** | Access the state associated with the previous `checkpoint` for the given thread. See short-term-memory.                                               |
+| **store**    | An instance of \[BaseStore]\[langgraph.store.base.BaseStore]. Useful for long-term memory.                     |
+| **writer**   | Use to access the StreamWriter when working with Async Python \< 3.11. See streaming with functional API for details. |
+| **config**   | For accessing run time configuration. See RunnableConfig for information.                           |
 
-<Warning>
-  Declare the parameters with the appropriate name and type annotation.
-</Warning>
+Declare the parameters with the appropriate name and type annotation.
 
-<Accordion title="Requesting Injectable Parameters">
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Requesting Injectable Parameters
+  ```python
   from langchain_core.runnables import RunnableConfig
   from langgraph.func import entrypoint
   from langgraph.store.base import BaseStore
@@ -232,15 +219,12 @@ When declaring an `entrypoint`, you can request access to additional parameters 
       config: RunnableConfig  # For accessing the configuration passed to the entrypoint
   ) -> ...:
   ```
-</Accordion>
 
 ### Executing
 
-Using the [`@entrypoint`](#entrypoint) yields a [`Pregel`](https://reference.langchain.com/python/langgraph/pregel/#langgraph.pregel.Pregel.stream) object that can be executed using the `invoke`, `ainvoke`, `stream`, and `astream` methods.
+Using the `@entrypoint` yields a `Pregel` object that can be executed using the `invoke`, `ainvoke`, `stream`, and `astream` methods.
 
-<Tabs>
-  <Tab title="Invoke">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     config = {
         "configurable": {
             "thread_id": "some_thread_id"
@@ -248,10 +232,8 @@ Using the [`@entrypoint`](#entrypoint) yields a [`Pregel`](https://reference.lan
     }
     my_workflow.invoke(some_input, config)  # Wait for the result synchronously
     ```
-  </Tab>
 
-  <Tab title="Async Invoke">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     config = {
         "configurable": {
             "thread_id": "some_thread_id"
@@ -259,10 +241,8 @@ Using the [`@entrypoint`](#entrypoint) yields a [`Pregel`](https://reference.lan
     }
     await my_workflow.ainvoke(some_input, config)  # Await result asynchronously
     ```
-  </Tab>
 
-  <Tab title="Stream">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     config = {
         "configurable": {
             "thread_id": "some_thread_id"
@@ -274,10 +254,8 @@ Using the [`@entrypoint`](#entrypoint) yields a [`Pregel`](https://reference.lan
         for token in message.text:
             print(token, end="", flush=True)
     ```
-  </Tab>
 
-  <Tab title="Async Stream">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     config = {
         "configurable": {
             "thread_id": "some_thread_id"
@@ -289,16 +267,12 @@ Using the [`@entrypoint`](#entrypoint) yields a [`Pregel`](https://reference.lan
         async for token in message.text:
             print(token, end="", flush=True)
     ```
-  </Tab>
-</Tabs>
 
 ### Resuming
 
-Resuming an execution after an [interrupt](https://reference.langchain.com/python/langgraph/types/interrupt) can be done by passing a **resume** value to the [`Command`](https://reference.langchain.com/python/langgraph/types/Command) primitive.
+Resuming an execution after an interrupt can be done by passing a **resume** value to the `Command` primitive.
 
-<Tabs>
-  <Tab title="Invoke">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langgraph.types import Command
 
     config = {
@@ -309,10 +283,8 @@ Resuming an execution after an [interrupt](https://reference.langchain.com/pytho
 
     my_workflow.invoke(Command(resume=some_resume_value), config)
     ```
-  </Tab>
 
-  <Tab title="Async Invoke">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langgraph.types import Command
 
     config = {
@@ -323,10 +295,8 @@ Resuming an execution after an [interrupt](https://reference.langchain.com/pytho
 
     await my_workflow.ainvoke(Command(resume=some_resume_value), config)
     ```
-  </Tab>
 
-  <Tab title="Stream">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langgraph.types import Command
 
     config = {
@@ -340,10 +310,8 @@ Resuming an execution after an [interrupt](https://reference.langchain.com/pytho
         for token in message.text:
             print(token, end="", flush=True)
     ```
-  </Tab>
 
-  <Tab title="Async Stream">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langgraph.types import Command
 
     config = {
@@ -357,8 +325,6 @@ Resuming an execution after an [interrupt](https://reference.langchain.com/pytho
         async for token in message.text:
             print(token, end="", flush=True)
     ```
-  </Tab>
-</Tabs>
 
 **Resuming after an error**
 
@@ -366,9 +332,7 @@ To resume after an error, run the `entrypoint` with a `None` and the same **thre
 
 This assumes that the underlying **error** has been resolved and execution can proceed successfully.
 
-<Tabs>
-  <Tab title="Invoke">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
 
     config = {
         "configurable": {
@@ -378,10 +342,8 @@ This assumes that the underlying **error** has been resolved and execution can p
 
     my_workflow.invoke(None, config)
     ```
-  </Tab>
 
-  <Tab title="Async Invoke">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
 
     config = {
         "configurable": {
@@ -391,10 +353,8 @@ This assumes that the underlying **error** has been resolved and execution can p
 
     await my_workflow.ainvoke(None, config)
     ```
-  </Tab>
 
-  <Tab title="Stream">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
 
     config = {
         "configurable": {
@@ -407,10 +367,8 @@ This assumes that the underlying **error** has been resolved and execution can p
         for token in message.text:
             print(token, end="", flush=True)
     ```
-  </Tab>
 
-  <Tab title="Async Stream">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
 
     config = {
         "configurable": {
@@ -423,18 +381,16 @@ This assumes that the underlying **error** has been resolved and execution can p
         async for token in message.text:
             print(token, end="", flush=True)
     ```
-  </Tab>
-</Tabs>
 
 ### Short-term memory
 
-When an `entrypoint` is defined with a `checkpointer`, it stores information between successive invocations on the same **thread id** in [checkpoints](/oss/python/langgraph/checkpointers#checkpoints).
+When an `entrypoint` is defined with a `checkpointer`, it stores information between successive invocations on the same **thread id** in checkpoints.
 
 This allows accessing the state from the previous invocation using the `previous` parameter.
 
 By default, the `previous` parameter is the return value of the previous invocation.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 @entrypoint(checkpointer=checkpointer)
 def my_workflow(number: int, *, previous: Any = None) -> int:
     previous = previous or 0
@@ -452,11 +408,11 @@ my_workflow.invoke(2, config)  # 3 (previous was 1 from the previous invocation)
 
 #### `entrypoint.final`
 
-[`entrypoint.final`](https://reference.langchain.com/python/langgraph/func/entrypoint/final) is a special primitive that can be returned from an entrypoint and allows **decoupling** the value that is **saved in the checkpoint** from the **return value of the entrypoint**.
+`entrypoint.final` is a special primitive that can be returned from an entrypoint and allows **decoupling** the value that is **saved in the checkpoint** from the **return value of the entrypoint**.
 
 The first value is the return value of the entrypoint, and the second value is the value that will be saved in the checkpoint. The type annotation is `entrypoint.final[return_type, save_type]`.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 @entrypoint(checkpointer=checkpointer)
 def my_workflow(number: int, *, previous: Any = None) -> entrypoint.final[int, int]:
     previous = previous or 0
@@ -480,13 +436,13 @@ my_workflow.invoke(1, config)  # 6 (previous was 3 * 2 from the previous invocat
 A **task** represents a discrete unit of work, such as an API call or data processing step. It has two key characteristics:
 
 * **Asynchronous Execution**: Tasks are designed to be executed asynchronously, allowing multiple operations to run concurrently without blocking.
-* **Checkpointing**: Task results are saved to a checkpoint, enabling resumption of the workflow from the last saved state. (See [persistence](/oss/python/langgraph/persistence) for more details).
+* **Checkpointing**: Task results are saved to a checkpoint, enabling resumption of the workflow from the last saved state. (See persistence for more details).
 
 ### Definition
 
 Tasks are defined using the `@task` decorator, which wraps a regular Python function.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.func import task
 
 @task()
@@ -496,14 +452,12 @@ def slow_computation(input_value):
     return result
 ```
 
-<Warning>
-  **Serialization**
-  The **outputs** of tasks must be JSON-serializable to support checkpointing.
-</Warning>
+**Serialization**
+The **outputs** of tasks must be JSON-serializable to support checkpointing.
 
 ### Execution
 
-**Tasks** can only be called from within an **entrypoint**, another **task**, or a [state graph node](/oss/python/langgraph/graph-api#nodes).
+**Tasks** can only be called from within an **entrypoint**, another **task**, or a state graph node.
 
 Tasks *cannot* be called directly from the main application code.
 
@@ -511,33 +465,27 @@ When you call a **task**, it returns *immediately* with a future object. A futur
 
 To obtain the result of a **task**, you can either wait for it synchronously (using `result()`) or await it asynchronously (using `await`).
 
-<Tabs>
-  <Tab title="Synchronous Invocation">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     @entrypoint(checkpointer=checkpointer)
     def my_workflow(some_input: int) -> int:
         future = slow_computation(some_input)
         return future.result()  # Wait for the result synchronously
     ```
-  </Tab>
 
-  <Tab title="Asynchronous Invocation">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     @entrypoint(checkpointer=checkpointer)
     async def my_workflow(some_input: int) -> int:
         return await slow_computation(some_input)  # Await result asynchronously
     ```
-  </Tab>
-</Tabs>
 
 ## When to use a task
 
 **Tasks** are useful in the following scenarios:
 
 * **Checkpointing**: When you need to save the result of a long-running operation to a checkpoint, so you don't need to recompute it when resuming the workflow.
-* **Human-in-the-loop**: If you're building a workflow that requires human intervention, you MUST use **tasks** to encapsulate any randomness (e.g., API calls) to ensure that the workflow can be resumed correctly. See the [determinism](#determinism) section for more details.
+* **Human-in-the-loop**: If you're building a workflow that requires human intervention, you MUST use **tasks** to encapsulate any randomness (e.g., API calls) to ensure that the workflow can be resumed correctly. See the determinism section for more details.
 * **Parallel Execution**: For I/O-bound tasks, **tasks** enable parallel execution, allowing multiple operations to run concurrently without blocking (e.g., calling multiple APIs).
-* **Observability**: Wrapping operations in **tasks** provides a way to track the progress of the workflow and monitor the execution of individual operations using [LangSmith](/langsmith/observability).
+* **Observability**: Wrapping operations in **tasks** provides a way to track the progress of the workflow and monitor the execution of individual operations using LangSmith.
 * **Retryable Work**: When work needs to be retried to handle failures or inconsistencies, **tasks** provide a way to encapsulate and manage the retry logic.
 
 ## Serialization
@@ -557,9 +505,9 @@ Providing non-serializable inputs or outputs will result in a runtime error when
 
 When you resume a workflow run, the code does **NOT** resume from the **same line of code** where execution stopped. Execution returns to a checkpoint boundary, and the workflow **replays** forward until it reaches the pause again.
 
-For the Functional API, replay starts at the beginning of the **entrypoint** while LangGraph restores completed [**task**](/oss/python/langgraph/functional-api#task) and [**subgraph**](/oss/python/langgraph/use-subgraphs) results from the checkpointer instead of recomputing them. That preserves the recorded order of steps across pauses, including for long-running or non-deterministic **task** outputs.
+For the Functional API, replay starts at the beginning of the **entrypoint** while LangGraph restores completed **task** and **subgraph** results from the checkpointer instead of recomputing them. That preserves the recorded order of steps across pauses, including for long-running or non-deterministic **task** outputs.
 
-To use features like **human-in-the-loop**, you must place non-deterministic work (for example, random values) and side effects (for example, file writes or API calls) in [**tasks**](/oss/python/langgraph/functional-api#task).
+To use features like **human-in-the-loop**, you must place non-deterministic work (for example, random values) and side effects (for example, file writes or API calls) in **tasks**.
 
 Different runs of a workflow can produce different results, but resuming a **specific** thread should replay the same persisted **task** and **subgraph** results.
 
@@ -567,7 +515,7 @@ To ensure that your workflow is deterministic and can be consistently replayed, 
 
 * **Avoid repeating work**: In an **entrypoint**, if you chain several side effects (for example, logging, file writes, or network calls), give each its own **task** so resume restores their outputs from the checkpointer instead of running them again.
 * **Encapsulate non-deterministic operations**: Keep values that can change between attempts (for example, random numbers or wall-clock reads) inside **tasks**, so replay lines up with what was checkpointed.
-* **Use idempotent operations**: For partial task failures and retries, see [Idempotency](#idempotency).
+* **Use idempotent operations**: For partial task failures and retries, see Idempotency.
 
 ## Idempotency
 
@@ -581,30 +529,26 @@ When a workflow resumes, LangGraph replays completed **task** results from the c
 
 Encapsulate side effects (e.g., writing to a file, sending an email) in tasks to ensure they are not executed multiple times when resuming a workflow.
 
-<Tabs>
-  <Tab title="Incorrect">
     In this example, a side effect (writing to a file) is directly included in the workflow, so it will be executed a second time when resuming the workflow.
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     @entrypoint(checkpointer=checkpointer)
     def my_workflow(inputs: dict) -> int:
         # This code will be executed a second time when resuming the workflow.
         # Which is likely not what you want.
-        with open("output.txt", "w") as f:  # [!code highlight]
-            f.write("Side effect executed")  # [!code highlight]
+        with open("output.txt", "w") as f:
+            f.write("Side effect executed")
         value = interrupt("question")
         return value
     ```
-  </Tab>
 
-  <Tab title="Correct">
     In this example, the side effect is encapsulated in a task, ensuring consistent execution upon resumption.
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langgraph.func import task
 
-    @task  # [!code highlight]
-    def write_to_file():  # [!code highlight]
+    @task
+    def write_to_file():
         with open("output.txt", "w") as f:
             f.write("Side effect executed")
 
@@ -615,8 +559,6 @@ Encapsulate side effects (e.g., writing to a file, sending an email) in tasks to
         value = interrupt("question")
         return value
     ```
-  </Tab>
-</Tabs>
 
 ### Non-deterministic control flow
 
@@ -627,21 +569,19 @@ Operations that might give different results each time (like getting current tim
 
 This is especially important when using **human-in-the-loop** workflows with multiple interrupt calls. LangGraph keeps a list of resume values for each task/entrypoint. When an interrupt is encountered, it's matched with the corresponding resume value. This matching is strictly **index-based**, so the order of the resume values should match the order of the interrupts.
 
-If order of execution is not maintained when resuming, one [`interrupt`](https://reference.langchain.com/python/langgraph/types/interrupt) call may be matched with the wrong `resume` value, leading to incorrect results.
+If order of execution is not maintained when resuming, one `interrupt` call may be matched with the wrong `resume` value, leading to incorrect results.
 
-Please read the section on [determinism](#determinism) for more details.
+Please read the section on determinism for more details.
 
-<Tabs>
-  <Tab title="Incorrect">
     In this example, the workflow uses the current time to determine which task to execute. This is non-deterministic because the result of the workflow depends on the time at which it is executed.
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langgraph.func import entrypoint
 
     @entrypoint(checkpointer=checkpointer)
     def my_workflow(inputs: dict) -> int:
         t0 = inputs["t0"]
-        t1 = time.time()  # [!code highlight]
+        t1 = time.time()
 
         delta_t = t1 - t0
 
@@ -657,24 +597,22 @@ Please read the section on [determinism](#determinism) for more details.
             "value": value
         }
     ```
-  </Tab>
 
-  <Tab title="Correct">
     In this example, the workflow uses the input `t0` to determine which task to execute. This is deterministic because the result of the workflow depends only on the input.
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     import time
 
     from langgraph.func import task
 
-    @task  # [!code highlight]
-    def get_time() -> float:  # [!code highlight]
+    @task
+    def get_time() -> float:
         return time.time()
 
     @entrypoint(checkpointer=checkpointer)
     def my_workflow(inputs: dict) -> int:
         t0 = inputs["t0"]
-        t1 = get_time().result()  # [!code highlight]
+        t1 = get_time().result()
 
         delta_t = t1 - t0
 
@@ -690,13 +628,11 @@ Please read the section on [determinism](#determinism) for more details.
             "value": value
         }
     ```
-  </Tab>
-</Tabs>
 
 ## Learn more
 
-* [How to use the Functional API](/oss/python/langgraph/use-functional-api)
-* [Graph API conceptual overview](/oss/python/langgraph/graph-api)
-* [Choosing between Graph API and Functional API](/oss/python/langgraph/choosing-apis)
+* How to use the Functional API
+* Graph API conceptual overview
+* Choosing between Graph API and Functional API
 
 ***

@@ -13,15 +13,11 @@ Build custom middleware by implementing hooks that run at specific points in the
 
 Middleware provides two styles of hooks to intercept agent execution:
 
-<CardGroup cols={2}>
-  <Card title="Node-style hooks" icon="share" href="#node-style-hooks">
+Node-style hooks
     Run sequentially at specific execution points.
-  </Card>
 
-  <Card title="Wrap-style hooks" icon="container" href="#wrap-style-hooks">
+Wrap-style hooks
     Run around each model or tool call.
-  </Card>
-</CardGroup>
 
 ### Node-style hooks
 
@@ -47,9 +43,7 @@ Choose the hooks your middleware needs. You can choose between node-style hooks 
 
 **Example:**
 
-<Tabs>
-  <Tab title="Decorator">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents.middleware import before_model, after_model, AgentState
     from langchain.messages import AIMessage
     from langgraph.runtime import Runtime
@@ -70,10 +64,8 @@ Choose the hooks your middleware needs. You can choose between node-style hooks 
         print(f"Model returned: {state['messages'][-1].content}")
         return None
     ```
-  </Tab>
 
-  <Tab title="Class">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents.middleware import AgentMiddleware, AgentState, hook_config
     from langchain.messages import AIMessage
     from langgraph.runtime import Runtime
@@ -97,8 +89,6 @@ Choose the hooks your middleware needs. You can choose between node-style hooks 
             print(f"Model returned: {state['messages'][-1].content}")
             return None
     ```
-  </Tab>
-</Tabs>
 
 ### Wrap-style hooks
 
@@ -113,9 +103,7 @@ You decide if the handler is called zero times (short-circuit), once (normal flo
 
 **Example:**
 
-<Tabs>
-  <Tab title="Decorator">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
     from typing import Callable
 
@@ -133,10 +121,8 @@ You decide if the handler is called zero times (short-circuit), once (normal flo
                     raise
                 print(f"Retry {attempt + 1}/3 after error: {e}")
     ```
-  </Tab>
 
-  <Tab title="Class">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents.middleware import AgentMiddleware, ModelRequest, ModelResponse
     from typing import Callable
 
@@ -158,21 +144,19 @@ You decide if the handler is called zero times (short-circuit), once (normal flo
                         raise
                     print(f"Retry {attempt + 1}/{self.max_retries} after error: {e}")
     ```
-  </Tab>
-</Tabs>
 
 ## State updates
 
 Both node-style and wrap-style hooks can update agent state. The mechanism differs:
 
 * **Node-style hooks** (`before_agent`, `before_model`, `after_model`, `after_agent`): Return a dict directly. The dict is applied to the agent state using the graph's reducers.
-* **Wrap-style hooks** (`wrap_model_call`, `wrap_tool_call`): For model calls, return [`ExtendedModelResponse`](https://reference.langchain.com/python/langchain/agents/middleware/types/ExtendedModelResponse) with a [`Command`](https://reference.langchain.com/python/langgraph/types/Command) to inject state updates alongside the model response. For tool calls, return a [`Command`](https://reference.langchain.com/python/langgraph/types/Command) directly. Use these when you need to track or update state based on logic that runs during the model or tool call, such as summarization trigger points, usage metadata, or custom fields calculated from the request or response.
+* **Wrap-style hooks** (`wrap_model_call`, `wrap_tool_call`): For model calls, return `ExtendedModelResponse` with a `Command` to inject state updates alongside the model response. For tool calls, return a `Command` directly. Use these when you need to track or update state based on logic that runs during the model or tool call, such as summarization trigger points, usage metadata, or custom fields calculated from the request or response.
 
 ### Node-style hooks
 
 Return a dict from a node-style hook to merge updates into agent state. The dict keys map to state fields.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents.middleware import after_model, AgentState
 from langgraph.runtime import Runtime
 from typing import Any
@@ -190,9 +174,9 @@ def increment_after_model(state: TrackingState, runtime: Runtime) -> dict[str, A
 
 ### Wrap-style hooks
 
-Return a [`ExtendedModelResponse`](https://reference.langchain.com/python/langchain/agents/middleware/types/ExtendedModelResponse) with a [`Command`](https://reference.langchain.com/python/langgraph/types/Command) from `wrap_model_call` to inject state updates from the model call layer:
+Return a `ExtendedModelResponse` with a `Command` from `wrap_model_call` to inject state updates from the model call layer:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from typing import Callable
 from langchain.agents.middleware import (
     wrap_model_call,
@@ -222,7 +206,7 @@ def track_usage(
     )
 ```
 
-The [`Command`](https://reference.langchain.com/python/langgraph/types/Command) flows through the graph's reducers, so updates are applied correctly and messages are additive rather than replacing existing state.
+The `Command` flows through the graph's reducers, so updates are applied correctly and messages are additive rather than replacing existing state.
 
 #### Composition with multiple middleware
 
@@ -232,7 +216,7 @@ When multiple middleware layers return `ExtendedModelResponse`, their commands c
 * **Outer wins on conflicts:** For non-reducer state fields, commands are applied inner-first, then outer. The outermost middleware's value takes precedence on conflicting keys.
 * **Retry-safe:** If the outer middleware implements logic that can result in multiple calls to `handler()` again (for example, retry logic), commands from earlier calls are discarded.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from typing import Annotated, Callable
 
 from langchain.agents.middleware import (
@@ -297,15 +281,11 @@ class InnerMiddleware(AgentMiddleware):
 
 You can create middleware in two ways:
 
-<CardGroup cols={2}>
-  <Card title="Decorator-based middleware" icon="at" href="#decorator-based-middleware">
+Decorator-based middleware
     Quick and simple for single-hook middleware. Use decorators to wrap individual functions.
-  </Card>
 
-  <Card title="Class-based middleware" icon="braces" href="#class-based-middleware">
+Class-based middleware
     More powerful for complex middleware with multiple hooks or configuration.
-  </Card>
-</CardGroup>
 
 ### Decorator-based middleware
 
@@ -315,23 +295,23 @@ Quick and simple for single-hook middleware. Use decorators to wrap individual f
 
 **Node-style:**
 
-* [`@before_agent`](https://reference.langchain.com/python/langchain/agents/middleware/types/before_agent) - Runs before agent starts (once per invocation)
-* [`@before_model`](https://reference.langchain.com/python/langchain/agents/middleware/types/before_model) - Runs before each model call
-* [`@after_model`](https://reference.langchain.com/python/langchain/agents/middleware/types/after_model) - Runs after each model response
-* [`@after_agent`](https://reference.langchain.com/python/langchain/agents/middleware/types/after_agent) - Runs after agent completes (once per invocation)
+* `@before_agent` - Runs before agent starts (once per invocation)
+* `@before_model` - Runs before each model call
+* `@after_model` - Runs after each model response
+* `@after_agent` - Runs after agent completes (once per invocation)
 
 **Wrap-style:**
 
-* [`@wrap_model_call`](https://reference.langchain.com/python/langchain/agents/middleware/types/wrap_model_call) - Wraps each model call with custom logic
-* [`@wrap_tool_call`](https://reference.langchain.com/python/langchain/agents/middleware/types/wrap_tool_call) - Wraps each tool call with custom logic
+* `@wrap_model_call` - Wraps each model call with custom logic
+* `@wrap_tool_call` - Wraps each tool call with custom logic
 
 **Convenience:**
 
-* [`@dynamic_prompt`](https://reference.langchain.com/python/langchain/agents/middleware/types/dynamic_prompt) - Generates dynamic system prompts
+* `@dynamic_prompt` - Generates dynamic system prompts
 
 **Example:**
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents.middleware import (
     before_model,
     wrap_model_call,
@@ -382,14 +362,14 @@ More powerful for complex middleware with multiple hooks or configuration. Use c
 python
 An `AgentMiddleware` subclass can declare three class attributes that the agent factory picks up at compile time:
 
-* `state_schema` — extend the agent state with custom fields. See [Custom state schema](#custom-state-schema).
+* `state_schema` — extend the agent state with custom fields. See Custom state schema.
 * `tools` — register additional tools that ship with the middleware (e.g., `write_todos` on the to-do list middleware).
-* `transformers` — register scope-aware stream transformer factories. See [Custom stream transformers](#custom-stream-transformers).
-  :::
+* `transformers` — register scope-aware stream transformer factories. See Custom stream transformers.
+:::
 
 **Example:**
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents.middleware import (
     AgentMiddleware,
     AgentState,
@@ -450,9 +430,7 @@ If your middleware needs to track state across hooks, middleware can extend the 
 
 * **Make conditional decisions**: Use accumulated state to determine whether to continue execution, jump to different nodes, or modify behavior dynamically
 
-<Tabs>
-  <Tab title="Decorator">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents import create_agent
     from langchain.messages import HumanMessage
     from langchain.agents.middleware import AgentState, before_model, after_model
@@ -492,10 +470,8 @@ If your middleware needs to track state across hooks, middleware can extend the 
         "user_id": "user-123",
     })
     ```
-  </Tab>
 
-  <Tab title="Class">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents import create_agent
     from langchain.messages import HumanMessage
     from langchain.agents.middleware import AgentState, AgentMiddleware
@@ -534,20 +510,18 @@ If your middleware needs to track state across hooks, middleware can extend the 
         "user_id": "user-123",
     })
     ```
-  </Tab>
-</Tabs>
 
 ## Custom stream transformers
 
-<Note>Middleware-registered transformers require `langchain>=1.3.2`.</Note>
+Middleware-registered transformers require `langchain>=1.3.2`.
 
 Middleware can register stream transformer factories that project events from the live agent stream onto typed extension channels. This is useful for surfacing counters, side-channel artifacts, partial outputs, or wire-level redaction without coupling to the framework's built-in projections.
 
-At compile time, middleware-registered factories merge with anything the caller passes directly to the agent factory. The [final ordering rules](/oss/python/langchain/event-streaming#register-transformers-on-middleware) keep the built-in `ToolCallTransformer` in front and let caller-supplied entries land last.
+At compile time, middleware-registered factories merge with anything the caller passes directly to the agent factory. The final ordering rules keep the built-in `ToolCallTransformer` in front and let caller-supplied entries land last.
 
 Set the `transformers` class attribute to a tuple of factory callables. Each factory has the shape `Callable[[tuple[str, ...]], StreamTransformer]` and is invoked as `factory(scope)`, where `scope` is the mini-mux scope tuple (`()` for the root, non-empty for subgraphs); returning a fresh transformer per call keeps each subgraph isolated.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import AgentMiddleware
 
@@ -563,13 +537,13 @@ agent = create_agent(
 )
 ```
 
-See [Register transformers on middleware](/oss/python/langchain/event-streaming#register-transformers-on-middleware) for the full ordering rules and the PII redaction example.
+See Register transformers on middleware for the full ordering rules and the PII redaction example.
 
 ## Execution order
 
 When using multiple middleware, understand how they execute:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 agent = create_agent(
     model="gpt-5.5",
     middleware=[middleware1, middleware2, middleware3],
@@ -577,35 +551,34 @@ agent = create_agent(
 )
 ```
 
-<Accordion title="Execution flow">
-  **Before hooks run in order:**
+Execution flow
+**Before hooks run in order:**
 
-  1. `middleware1.before_agent()`
-  2. `middleware2.before_agent()`
-  3. `middleware3.before_agent()`
+1. `middleware1.before_agent()`
+2. `middleware2.before_agent()`
+3. `middleware3.before_agent()`
 
-  **Agent loop starts**
+**Agent loop starts**
 
-  4. `middleware1.before_model()`
-  5. `middleware2.before_model()`
-  6. `middleware3.before_model()`
+4. `middleware1.before_model()`
+5. `middleware2.before_model()`
+6. `middleware3.before_model()`
 
-  **Wrap hooks nest like function calls:**
+**Wrap hooks nest like function calls:**
 
-  7. `middleware1.wrap_model_call()` → `middleware2.wrap_model_call()` → `middleware3.wrap_model_call()` → model
+7. `middleware1.wrap_model_call()` → `middleware2.wrap_model_call()` → `middleware3.wrap_model_call()` → model
 
-  **After hooks run in reverse order:**
+**After hooks run in reverse order:**
 
-  8. `middleware3.after_model()`
-  9. `middleware2.after_model()`
-  10. `middleware1.after_model()`
+8. `middleware3.after_model()`
+9. `middleware2.after_model()`
+10. `middleware1.after_model()`
 
-  **Agent loop ends**
+**Agent loop ends**
 
-  11. `middleware3.after_agent()`
-  12. `middleware2.after_agent()`
-  13. `middleware1.after_agent()`
-</Accordion>
+11. `middleware3.after_agent()`
+12. `middleware2.after_agent()`
+13. `middleware1.after_agent()`
 
 **Key rules:**
 
@@ -623,9 +596,7 @@ To exit early from middleware, return a dictionary with `jump_to`:
 * `'tools'`: Jump to the tools node
 * `'model'`: Jump to the model node (or the first `before_model` hook)
 
-<Tabs>
-  <Tab title="Decorator">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents.middleware import after_model, hook_config, AgentState
     from langchain.messages import AIMessage
     from langgraph.runtime import Runtime
@@ -643,10 +614,8 @@ To exit early from middleware, return a dictionary with `jump_to`:
             }
         return None
     ```
-  </Tab>
 
-  <Tab title="Class">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents.middleware import AgentMiddleware, hook_config, AgentState
     from langchain.messages import AIMessage
     from langgraph.runtime import Runtime
@@ -663,18 +632,16 @@ To exit early from middleware, return a dictionary with `jump_to`:
                 }
             return None
     ```
-  </Tab>
-</Tabs>
 
 ## Configure tracing
 
-<Note>Requires `langchain>=1.3.15`.</Note>
+Requires `langchain>=1.3.15`.
 
 Middleware hook spans trace their inputs and outputs by default. Set a `trace_policy` to shape what they record. `TracePolicy` accepts callables such as `process_inputs` and `process_outputs` that transform the traced value; `omit_payload` drops it entirely. This can be useful as an optimization when the full message history is uninformative to the function of the middleware.
 
 To omit the input payload from a middleware's trace:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents.middleware import AgentMiddleware, TracePolicy, omit_payload
 
 class MyMiddleware(AgentMiddleware):
@@ -683,7 +650,7 @@ class MyMiddleware(AgentMiddleware):
 
 To apply a policy to all middleware, configure a global default:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents.middleware import configure_trace_policy, TracePolicy, omit_payload
 
 configure_trace_policy(TracePolicy(process_inputs=omit_payload))  # pass None to clear
@@ -696,8 +663,8 @@ A middleware's own `trace_policy` overrides the global default.
 1. Keep middleware focused - each should do one thing well
 2. Handle errors gracefully - don't let middleware errors crash the agent
 3. **Use appropriate hook types**:
-   * Node-style for sequential logic (logging, validation)
-   * Wrap-style for control flow (retry, fallback, caching)
+* Node-style for sequential logic (logging, validation)
+* Wrap-style for control flow (retry, fallback, caching)
 4. Clearly document any custom state properties
 5. Unit test middleware independently before integrating
 6. Consider execution order - place critical middleware first in the list
@@ -709,11 +676,9 @@ A middleware's own `trace_policy` overrides the global default.
 
 Dynamically modify the system prompt at runtime to inject context, user-specific instructions, or other information before each model call. This is one of the most common middleware use cases.
 
-Use the `system_message` field on `ModelRequest` to read and modify the system prompt. It contains a [`SystemMessage`](https://reference.langchain.com/python/langchain-core/messages/system/SystemMessage) object (even if the agent was created with a string `system_prompt`).
+Use the `system_message` field on `ModelRequest` to read and modify the system prompt. It contains a `SystemMessage` object (even if the agent was created with a string `system_prompt`).
 
-<Tabs>
-  <Tab title="Decorator">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from collections.abc import Callable
 
     from langchain.agents.middleware import ModelRequest, ModelResponse, wrap_model_call
@@ -731,10 +696,8 @@ Use the `system_message` field on `ModelRequest` to read and modify the system p
         new_system_message = SystemMessage(content=new_content)
         return handler(request.override(system_message=new_system_message))
     ```
-  </Tab>
 
-  <Tab title="Class">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from collections.abc import Callable
 
     from langchain.agents.middleware import AgentMiddleware, ModelRequest, ModelResponse
@@ -752,21 +715,15 @@ Use the `system_message` field on `ModelRequest` to read and modify the system p
             new_system_message = SystemMessage(content=new_content)
             return handler(request.override(system_message=new_system_message))
     ```
-  </Tab>
-</Tabs>
 
-<Note>
-  * `ModelRequest.system_message` is always a [`SystemMessage`](https://reference.langchain.com/python/langchain-core/messages/system/SystemMessage) object, even if the agent was created with `system_prompt="string"`
-  * Use `SystemMessage.content_blocks` to access content as a list of blocks, regardless of whether the original content was a string or list
-  * When modifying system messages, use `content_blocks` and append new blocks to preserve existing structure
-  * You can pass [`SystemMessage`](https://reference.langchain.com/python/langchain-core/messages/system/SystemMessage) objects directly to `create_agent`'s `system_prompt` parameter for advanced use cases like cache control
-</Note>
+* `ModelRequest.system_message` is always a `SystemMessage` object, even if the agent was created with `system_prompt="string"`
+* Use `SystemMessage.content_blocks` to access content as a list of blocks, regardless of whether the original content was a string or list
+* When modifying system messages, use `content_blocks` and append new blocks to preserve existing structure
+* You can pass `SystemMessage` objects directly to `create_agent`'s `system_prompt` parameter for advanced use cases like cache control
 
 ### Dynamic model selection
 
-<Tabs>
-  <Tab title="Decorator">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from collections.abc import Callable
 
     from langchain.agents.middleware import ModelRequest, ModelResponse, wrap_model_call
@@ -787,10 +744,8 @@ Use the `system_message` field on `ModelRequest` to read and modify the system p
             model = simple_model
         return handler(request.override(model=model))
     ```
-  </Tab>
 
-  <Tab title="Class">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from collections.abc import Callable
 
     from langchain.agents.middleware import AgentMiddleware, ModelRequest, ModelResponse
@@ -812,12 +767,10 @@ Use the `system_message` field on `ModelRequest` to read and modify the system p
                 model = simple_model
             return handler(request.override(model=model))
     ```
-  </Tab>
-</Tabs>
 
 ### Dynamically selecting tools
 
-Select relevant tools at runtime to improve performance and accuracy. This section covers filtering pre-registered tools. For registering tools that are discovered at runtime (e.g., from MCP servers), see [Runtime tool registration](/oss/python/langchain/tools#dynamic-tool-selection).
+Select relevant tools at runtime to improve performance and accuracy. This section covers filtering pre-registered tools. For registering tools that are discovered at runtime (e.g., from MCP servers), see Runtime tool registration.
 
 **Benefits:**
 
@@ -825,9 +778,7 @@ Select relevant tools at runtime to improve performance and accuracy. This secti
 * **Better accuracy** - Models choose correctly from fewer options
 * **Permission control** - Dynamically filter tools based on user access
 
-<Tabs>
-  <Tab title="Decorator">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents import create_agent
     from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
     from typing import Callable
@@ -849,10 +800,8 @@ Select relevant tools at runtime to improve performance and accuracy. This secti
         middleware=[select_tools],
     )
     ```
-  </Tab>
 
-  <Tab title="Class">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents import create_agent
     from langchain.agents.middleware import AgentMiddleware, ModelRequest, ModelResponse
     from typing import Callable
@@ -875,14 +824,10 @@ Select relevant tools at runtime to improve performance and accuracy. This secti
         middleware=[ToolSelectorMiddleware()],
     )
     ```
-  </Tab>
-</Tabs>
 
 ### Tool call monitoring
 
-<Tabs>
-  <Tab title="Decorator">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from collections.abc import Callable
 
     from langchain.agents.middleware import wrap_tool_call
@@ -906,10 +851,8 @@ Select relevant tools at runtime to improve performance and accuracy. This secti
             print(f"Tool failed: {e}")
             raise
     ```
-  </Tab>
 
-  <Tab title="Class">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from collections.abc import Callable
 
     from langchain.agents.middleware import AgentMiddleware
@@ -934,16 +877,12 @@ Select relevant tools at runtime to improve performance and accuracy. This secti
                 print(f"Tool failed: {e}")
                 raise
     ```
-  </Tab>
-</Tabs>
 
 ### Prompt caching (Anthropic)
 
 When working with Anthropic models, use structured content blocks with cache control directives to cache large system prompts:
 
-<Tabs>
-  <Tab title="Decorator">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
     from langchain.messages import SystemMessage
     from typing import Callable
@@ -967,10 +906,8 @@ When working with Anthropic models, use structured content blocks with cache con
         new_system_message = SystemMessage(content=new_content)
         return handler(request.override(system_message=new_system_message))
     ```
-  </Tab>
 
-  <Tab title="Class">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents.middleware import AgentMiddleware, ModelRequest, ModelResponse
     from langchain.messages import SystemMessage
     from typing import Callable
@@ -994,22 +931,20 @@ When working with Anthropic models, use structured content blocks with cache con
             new_system_message = SystemMessage(content=new_content)
             return handler(request.override(system_message=new_system_message))
     ```
-  </Tab>
-</Tabs>
 
 **Notes:**
 
-* `ModelRequest.system_message` is always a [`SystemMessage`](https://reference.langchain.com/python/langchain-core/messages/system/SystemMessage) object, even if the agent was created with `system_prompt="string"`
+* `ModelRequest.system_message` is always a `SystemMessage` object, even if the agent was created with `system_prompt="string"`
 * Use `SystemMessage.content_blocks` to access content as a list of blocks, regardless of whether the original content was a string or list
 * When modifying system messages, use `content_blocks` and append new blocks to preserve existing structure
-* You can pass [`SystemMessage`](https://reference.langchain.com/python/langchain-core/messages/system/SystemMessage) objects directly to `create_agent`'s `system_prompt` parameter for advanced use cases like cache control
+* You can pass `SystemMessage` objects directly to `create_agent`'s `system_prompt` parameter for advanced use cases like cache control
 
 :::
 
 ## Additional resources
 
-* [Middleware API reference](https://reference.langchain.com/python/langchain/middleware/)
-* [Built-in middleware](/oss/python/langchain/middleware/built-in)
-* [Testing agents](/oss/python/langchain/test/)
+* Middleware API reference
+* Built-in middleware
+* Testing agents
 
 ***

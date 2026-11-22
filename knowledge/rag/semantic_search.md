@@ -9,7 +9,7 @@ url: https://docs.langchain.com/oss/python/langchain/knowledge-base
 
 ## Overview
 
-Build a semantic search engine over a PDF with LangChain [embeddings](/oss/python/integrations/embeddings) and [vector stores](/oss/python/integrations/vectorstores). Use it to retrieve passages similar to a query, then plug the retriever into [retrieval-augmented generation (RAG)](/oss/python/deepagents/retrieval) or other LLM workflows.
+Build a semantic search engine over a PDF with LangChain embeddings and vector stores. Use it to retrieve passages similar to a query, then plug the retriever into retrieval-augmented generation (RAG) or other LLM workflows.
 
 This tutorial covers:
 
@@ -25,10 +25,10 @@ The guide also includes a minimal RAG implementation on top of the search engine
 
 This tutorial focuses on text retrieval and covers the following concepts:
 
-* [`Document`](https://reference.langchain.com/python/langchain-core/documents/base/Document)
-* [Text splitters](/oss/python/integrations/splitters)
-* [Embeddings](/oss/python/integrations/embeddings)
-* [Vector stores](/oss/python/integrations/vectorstores) and [retrievers](/oss/python/integrations/retrievers)
+* `Document`
+* Text splitters
+* Embeddings
+* Vector stores and retrievers
 
 ## Setup
 
@@ -36,38 +36,36 @@ This tutorial focuses on text retrieval and covers the following concepts:
 
 This tutorial reads a PDF using the `pypdf` package:
 
-<CodeGroup>
-  ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```bash pip
   pip install pypdf
   ```
 
-  ```bash conda theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```bash conda
   conda install pypdf -c conda-forge
   ```
 
-  ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```bash uv
   uv add pypdf
   ```
-</CodeGroup>
 
-For more details, see the [Installation guide](/oss/python/langchain/install).
+For more details, see the Installation guide.
 
 ### Configure LangSmith
 
 Many of the applications you build with LangChain will contain multiple steps with multiple invocations of LLM calls.
 As these applications get more and more complex, it becomes crucial to be able to inspect what exactly is going on inside your chain or agent.
-The best way to do this is with [LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-langchain-knowledge-base).
+The best way to do this is with LangSmith.
 
 After you sign up at the link above, make sure to set your environment variables to start logging traces:
 
-```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```shell
 export LANGSMITH_TRACING="true"
 export LANGSMITH_API_KEY="..."
 ```
 
 In a notebook, you can set them with:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import getpass
 import os
 
@@ -77,17 +75,17 @@ os.environ["LANGSMITH_API_KEY"] = getpass.getpass()
 
 ## Create documents
 
-LangChain implements a [`Document`](https://reference.langchain.com/python/langchain-core/documents/base/Document) abstraction for a unit of text and associated metadata. It has three attributes:
+LangChain implements a `Document` abstraction for a unit of text and associated metadata. It has three attributes:
 
 * `page_content`: a string representing the content.
 * `metadata`: a dict containing arbitrary metadata.
 * `id`: (optional) a string identifier for the document.
 
-`metadata` can capture the source of the document, its relationship to other documents, and other information. An individual [`Document`](https://reference.langchain.com/python/langchain-core/documents/base/Document) often represents a chunk of a larger document.
+`metadata` can capture the source of the document, its relationship to other documents, and other information. An individual `Document` often represents a chunk of a larger document.
 
 The following code creates sample documents:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_core.documents import Document
 
 documents = [
@@ -106,15 +104,13 @@ documents = [
 
 Vector search stores numeric vectors associated with text. Embed a query as a vector of the same dimension, then use similarity metrics (such as cosine similarity) to find related text.
 
-LangChain supports embeddings from [many providers](/oss/python/integrations/embeddings/). Select a model to specify how text should be converted into a numeric vector:
+LangChain supports embeddings from many providers. Select a model to specify how text should be converted into a numeric vector:
 
-<Tabs>
-  <Tab title="OpenAI">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -U "langchain-openai"
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     import getpass
     import os
 
@@ -125,14 +121,12 @@ LangChain supports embeddings from [many providers](/oss/python/integrations/emb
 
     embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
     ```
-  </Tab>
 
-  <Tab title="Azure">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -U "langchain-openai"
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     import getpass
     import os
 
@@ -147,14 +141,12 @@ LangChain supports embeddings from [many providers](/oss/python/integrations/emb
         openai_api_version=os.environ["AZURE_OPENAI_API_VERSION"],
     )
     ```
-  </Tab>
 
-  <Tab title="Google Gemini">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-google-genai
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     import getpass
     import os
 
@@ -165,38 +157,32 @@ LangChain supports embeddings from [many providers](/oss/python/integrations/emb
 
     embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
     ```
-  </Tab>
 
-  <Tab title="Google Vertex">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-google-vertexai
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain_google_vertexai import VertexAIEmbeddings
 
     embeddings = VertexAIEmbeddings(model="text-embedding-005")
     ```
-  </Tab>
 
-  <Tab title="AWS">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-aws
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain_aws import BedrockEmbeddings
 
     embeddings = BedrockEmbeddings(model_id="amazon.titan-embed-text-v2:0")
     ```
-  </Tab>
 
-  <Tab title="HuggingFace">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-huggingface
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain_huggingface import HuggingFaceEmbeddings
 
     embeddings = HuggingFaceEmbeddings(
@@ -204,26 +190,22 @@ LangChain supports embeddings from [many providers](/oss/python/integrations/emb
         encode_kwargs={"normalize_embeddings": True},
     )
     ```
-  </Tab>
 
-  <Tab title="Ollama">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-ollama
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain_ollama import OllamaEmbeddings
 
     embeddings = OllamaEmbeddings(model="llama3")
     ```
-  </Tab>
 
-  <Tab title="Cohere">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-cohere
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     import getpass
     import os
 
@@ -234,14 +216,12 @@ LangChain supports embeddings from [many providers](/oss/python/integrations/emb
 
     embeddings = CohereEmbeddings(model="embed-english-v3.0")
     ```
-  </Tab>
 
-  <Tab title="MistralAI">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-mistralai
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     import getpass
     import os
 
@@ -252,14 +232,12 @@ LangChain supports embeddings from [many providers](/oss/python/integrations/emb
 
     embeddings = MistralAIEmbeddings(model="mistral-embed")
     ```
-  </Tab>
 
-  <Tab title="Nomic">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-nomic
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     import getpass
     import os
 
@@ -270,14 +248,12 @@ LangChain supports embeddings from [many providers](/oss/python/integrations/emb
 
     embeddings = NomicEmbeddings(model="nomic-embed-text-v1.5")
     ```
-  </Tab>
 
-  <Tab title="NVIDIA">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-nvidia-ai-endpoints
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     import getpass
     import os
 
@@ -288,14 +264,12 @@ LangChain supports embeddings from [many providers](/oss/python/integrations/emb
 
     embeddings = NVIDIAEmbeddings(model="NV-Embed-QA")
     ```
-  </Tab>
 
-  <Tab title="Voyage AI">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-voyageai
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     import getpass
     import os
 
@@ -306,14 +280,12 @@ LangChain supports embeddings from [many providers](/oss/python/integrations/emb
 
     embeddings = VoyageAIEmbeddings(model="voyage-3")
     ```
-  </Tab>
 
-  <Tab title="IBM watsonx">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-ibm
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     import getpass
     import os
 
@@ -328,26 +300,22 @@ LangChain supports embeddings from [many providers](/oss/python/integrations/emb
         project_id="<WATSONX PROJECT_ID>",
     )
     ```
-  </Tab>
 
-  <Tab title="Fake">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-core
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain_core.embeddings import DeterministicFakeEmbedding
 
     embeddings = DeterministicFakeEmbedding(size=4096)
     ```
-  </Tab>
 
-  <Tab title="Isaacus">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-isaacus
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     import getpass
     import os
 
@@ -358,10 +326,8 @@ LangChain supports embeddings from [many providers](/oss/python/integrations/emb
 
     embeddings = IsaacusEmbeddings(model="kanon-2-embedder")
     ```
-  </Tab>
-</Tabs>
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 vector_1 = embeddings.embed_query(documents[0].page_content)
 vector_2 = embeddings.embed_query(documents[1].page_content)
 
@@ -370,7 +336,7 @@ print(f"Generated vectors of length {len(vector_1)}\n")
 print(vector_1[:10])
 ```
 
-```text wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```text wrap
 Generated vectors of length 1536
 
 [-0.008586574345827103, -0.03341241180896759, -0.008936782367527485, -0.0036674530711025, 0.010564599186182022, 0.009598285891115665, -0.028587326407432556, -0.015824200585484505, 0.0030416189692914486, -0.012899317778646946]
@@ -380,29 +346,25 @@ Next, store embeddings in a vector store that supports efficient similarity sear
 
 ## Select a vector store
 
-LangChain [`VectorStore`](https://reference.langchain.com/python/langchain-core/vectorstores/base/VectorStore) objects add text and [`Document`](https://reference.langchain.com/python/langchain-core/documents/base/Document) objects to a store and query them with similarity metrics. They are often initialized with [embedding](/oss/python/integrations/embeddings) models that translate text into numeric vectors.
+LangChain `VectorStore` objects add text and `Document` objects to a store and query them with similarity metrics. They are often initialized with embedding models that translate text into numeric vectors.
 
-LangChain includes [integrations](/oss/python/integrations/vectorstores) with many vector store technologies. Some are hosted and need credentials, some run in separate infrastructure (local or third-party), and others run in-memory for lightweight workloads. Select a vector store:
+LangChain includes integrations with many vector store technologies. Some are hosted and need credentials, some run in separate infrastructure (local or third-party), and others run in-memory for lightweight workloads. Select a vector store:
 
-<Tabs>
-  <Tab title="In-memory">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -U "langchain-core"
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain_core.vectorstores import InMemoryVectorStore
 
     vector_store = InMemoryVectorStore(embeddings)
     ```
-  </Tab>
 
-  <Tab title="Amazon OpenSearch">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU  boto3
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from opensearchpy import RequestsHttpConnection
 
     service = "es"  # must set the service as 'es'
@@ -424,14 +386,12 @@ LangChain includes [integrations](/oss/python/integrations/vectorstores) with ma
         index_name="test-index",
     )
     ```
-  </Tab>
 
-  <Tab title="AstraDB">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -U "langchain-astradb"
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain_astradb import AstraDBVectorStore
 
     vector_store = AstraDBVectorStore(
@@ -442,14 +402,12 @@ LangChain includes [integrations](/oss/python/integrations/vectorstores) with ma
         namespace=ASTRA_DB_NAMESPACE,
     )
     ```
-  </Tab>
 
-  <Tab title="Chroma">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-chroma
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain_chroma import Chroma
 
     vector_store = Chroma(
@@ -458,14 +416,12 @@ LangChain includes [integrations](/oss/python/integrations/vectorstores) with ma
         persist_directory="./chroma_langchain_db",  # Where to save data locally, remove if not necessary
     )
     ```
-  </Tab>
 
-  <Tab title="Milvus">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-milvus
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain_milvus import Milvus
 
     URI = "./milvus_example.db"
@@ -476,14 +432,12 @@ LangChain includes [integrations](/oss/python/integrations/vectorstores) with ma
         index_params={"index_type": "FLAT", "metric_type": "L2"},
     )
     ```
-  </Tab>
 
-  <Tab title="MongoDB">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-mongodb
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain_mongodb import MongoDBAtlasVectorSearch
 
     vector_store = MongoDBAtlasVectorSearch(
@@ -493,14 +447,12 @@ LangChain includes [integrations](/oss/python/integrations/vectorstores) with ma
         relevance_score_fn="cosine",
     )
     ```
-  </Tab>
 
-  <Tab title="PGVector">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-postgres
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain_postgres import PGVector
 
     vector_store = PGVector(
@@ -509,14 +461,12 @@ LangChain includes [integrations](/oss/python/integrations/vectorstores) with ma
         connection="postgresql+psycopg://...",
     )
     ```
-  </Tab>
 
-  <Tab title="PGVectorStore">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-postgres
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain_postgres import PGEngine, PGVectorStore
 
     pg_engine = PGEngine.from_connection_string(
@@ -529,14 +479,12 @@ LangChain includes [integrations](/oss/python/integrations/vectorstores) with ma
         embedding_service=embeddings
     )
     ```
-  </Tab>
 
-  <Tab title="Pinecone">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-pinecone
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain_pinecone import PineconeVectorStore
     from pinecone import Pinecone
 
@@ -545,14 +493,12 @@ LangChain includes [integrations](/oss/python/integrations/vectorstores) with ma
 
     vector_store = PineconeVectorStore(embedding=embeddings, index=index)
     ```
-  </Tab>
 
-  <Tab title="Qdrant">
-    ```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```shell
     pip install -qU langchain-qdrant
     ```
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from qdrant_client.models import Distance, VectorParams
     from langchain_qdrant import QdrantVectorStore
     from qdrant_client import QdrantClient
@@ -572,14 +518,12 @@ LangChain includes [integrations](/oss/python/integrations/vectorstores) with ma
         embedding=embeddings,
     )
     ```
-  </Tab>
-</Tabs>
 
 ## Load and split a PDF
 
-Load content from a PDF, then split it into smaller chunks before indexing. This example uses [a sample Nike 10-K filing from 2023](https://github.com/langchain-ai/langchain/blob/v0.3/docs/docs/example_data/nke-10k-2023.pdf).
+Load content from a PDF, then split it into smaller chunks before indexing. This example uses a sample Nike 10-K filing from 2023.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import pypdf
 from langchain_core.documents import Document
 
@@ -601,15 +545,15 @@ docs = load_pdf_pages(file_path)
 print(len(docs))
 ```
 
-```text theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```text
 107
 ```
 
-A page is often too coarse for retrieval. Split pages further so relevant passages are not diluted by surrounding text. [`RecursiveCharacterTextSplitter`](https://reference.langchain.com/python/langchain-text-splitters/character/RecursiveCharacterTextSplitter) recursively splits on common separators (such as newlines) until each chunk is the target size. This is the recommended text splitter for generic text use cases.
+A page is often too coarse for retrieval. Split pages further so relevant passages are not diluted by surrounding text. `RecursiveCharacterTextSplitter` recursively splits on common separators (such as newlines) until each chunk is the target size. This is the recommended text splitter for generic text use cases.
 
 Set `add_start_index=True` so each split keeps a `start_index` metadata field for its character offset in the original document.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 text_splitter = RecursiveCharacterTextSplitter(
@@ -620,7 +564,7 @@ all_splits = text_splitter.split_documents(docs)
 print(len(all_splits))
 ```
 
-```text theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```text
 516
 ```
 
@@ -628,28 +572,28 @@ print(len(all_splits))
 
 Index the chunks into the vector store:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 ids = vector_store.add_documents(documents=all_splits)
 ```
 
-Most vector store integrations also support connecting to an existing store (for example with a client or index name). See the docs for a specific [integration](/oss/python/integrations/vectorstores) for details.
+Most vector store integrations also support connecting to an existing store (for example with a client or index name). See the docs for a specific integration for details.
 
 ## Query the vector store
 
-After you have added the documents to the [`VectorStore`](https://reference.langchain.com/python/langchain-core/vectorstores/base/VectorStore), you can query it:
+After you have added the documents to the `VectorStore`, you can query it:
 
 * Synchronously and asynchronously
 * By string query and by vector
 * With and without similarity scores
-* By similarity and [maximum marginal relevance](https://reference.langchain.com/python/langchain-core/vectorstores/base/VectorStore/max_marginal_relevance_search) (to balance similarity with diversity)
+* By similarity and maximum marginal relevance (to balance similarity with diversity)
 
-These methods generally return a list of [`Document`](https://reference.langchain.com/python/langchain-core/documents/base/Document) objects.
+These methods generally return a list of `Document` objects.
 
 ### Search by string
 
 Embeddings map text to dense vectors so similar meanings are geometrically close. This means you can Retrieve relevant passages by passing a natural-language question:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 results = vector_store.similarity_search(
     "How many distribution centers does Nike have in the US?"
 )
@@ -657,7 +601,7 @@ results = vector_store.similarity_search(
 print(results[0])
 ```
 
-```python wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python wrap
 page_content='direct to consumer operations sell products through the following number of retail stores in the United States:
 U.S. RETAIL STORES NUMBER
 NIKE Brand factory stores 213
@@ -670,13 +614,13 @@ In the United States, NIKE has eight significant distribution centers. Refer to 
 
 Async query:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 results = await vector_store.asimilarity_search("When was Nike incorporated?")
 
 print(results[0])
 ```
 
-```python wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python wrap
 page_content='Table of Contents
 PART I
 ITEM 1. BUSINESS
@@ -692,7 +636,7 @@ and sales through our digital platforms (also referred to as "NIKE Brand Digital
 
 You can return similarity scores with the documents. Score meaning varies by provider. In this case, the score is a distance metric that varies inversely with similarity:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 # Note that providers implement different scores; the score here
 # is a distance metric that varies inversely with similarity.
 
@@ -702,7 +646,7 @@ print(f"Score: {score}\n")
 print(doc)
 ```
 
-```python wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python wrap
 Score: 0.23699893057346344
 
 page_content='Table of Contents
@@ -721,14 +665,14 @@ equivalent basis.' metadata={'page': 35, 'source': '../example_data/nke-10k-2023
 
 Embed the query yourself, then search with the resulting vector:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 embedding = embeddings.embed_query("How were Nike's margins impacted in 2023?")
 
 results = vector_store.similarity_search_by_vector(embedding)
 print(results[0])
 ```
 
-```python wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python wrap
 page_content='Table of Contents
 GROSS MARGIN
 FISCAL 2023 COMPARED TO FISCAL 2022
@@ -747,18 +691,18 @@ This was partially offset by:' metadata={'page': 36, 'source': '../example_data/
 
 Learn more:
 
-* [API Reference](https://reference.langchain.com/python/langchain-core/vectorstores/base/VectorStore)
-* [Integration-specific docs](/oss/python/integrations/vectorstores)
+* API Reference
+* Integration-specific docs
 
 ## Use retrievers
 
-LangChain [`VectorStore`](https://reference.langchain.com/python/langchain-core/vectorstores/base/VectorStore) objects do not subclass [`Runnable`](https://reference.langchain.com/python/langchain-core/runnables/base/Runnable). [Retrievers](https://reference.langchain.com/python/langchain-core/retrievers/BaseRetriever) are Runnables, so they support standard methods such as sync and async `invoke` and `batch`.
+LangChain `VectorStore` objects do not subclass `Runnable`. Retrievers are Runnables, so they support standard methods such as sync and async `invoke` and `batch`.
 
 You can also build retrievers from vector stores, and retrievers can also wrap non-vector sources (such as external APIs).
 
 In this case, create a simple retriever without subclassing `Retriever` by wrapping `similarity_search`:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from typing import List
 
 from langchain_core.documents import Document
@@ -778,14 +722,14 @@ retriever.batch(
 )
 ```
 
-```text wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```text wrap
 [[Document(metadata={'page': 4, 'source': '../example_data/nke-10k-2023.pdf', 'start_index': 3125}, page_content='direct to consumer operations sell products through the following number of retail stores in the United States:\nU.S. RETAIL STORES NUMBER\nNIKE Brand factory stores 213 \nNIKE Brand in-line stores (including employee-only stores) 74 \nConverse stores (including factory stores) 82 \nTOTAL 369 \nIn the United States, NIKE has eight significant distribution centers. Refer to Item 2. Properties for further information.\n2023 FORM 10-K 2')],
  [Document(metadata={'page': 3, 'source': '../example_data/nke-10k-2023.pdf', 'start_index': 0}, page_content='Table of Contents\nPART I\nITEM 1. BUSINESS\nGENERAL\nNIKE, Inc. was incorporated in 1967 under the laws of the State of Oregon. As used in this Annual Report on Form 10-K (this "Annual Report"), the terms "we," "us," "our,"\n"NIKE" and the "Company" refer to NIKE, Inc. and its predecessors, subsidiaries and affiliates, collectively, unless the context indicates otherwise.\nOur principal business activity is the design, development and worldwide marketing and selling of athletic footwear, apparel, equipment, accessories and services. NIKE is\nthe largest seller of athletic footwear and apparel in the world. We sell our products through NIKE Direct operations, which are comprised of both NIKE-owned retail stores\nand sales through our digital platforms (also referred to as "NIKE Brand Digital"), to retail accounts and to a mix of independent distributors, licensees and sales')]]
 ```
 
-Vector stores implement an `as_retriever` method that returns a [`VectorStoreRetriever`](https://reference.langchain.com/python/langchain-core/vectorstores/base/VectorStoreRetriever). These retrievers expose `search_type` and `search_kwargs` to select and parameterize the underlying store methods. Replicate the example above with:
+Vector stores implement an `as_retriever` method that returns a `VectorStoreRetriever`. These retrievers expose `search_type` and `search_kwargs` to select and parameterize the underlying store methods. Replicate the example above with:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 retriever = vector_store.as_retriever(
     search_type="similarity",
     search_kwargs={"k": 1},
@@ -799,14 +743,14 @@ retriever.batch(
 )
 ```
 
-```text wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```text wrap
 [[Document(metadata={'page': 4, 'source': '../example_data/nke-10k-2023.pdf', 'start_index': 3125}, page_content='direct to consumer operations sell products through the following number of retail stores in the United States:\nU.S. RETAIL STORES NUMBER\nNIKE Brand factory stores 213 \nNIKE Brand in-line stores (including employee-only stores) 74 \nConverse stores (including factory stores) 82 \nTOTAL 369 \nIn the United States, NIKE has eight significant distribution centers. Refer to Item 2. Properties for further information.\n2023 FORM 10-K 2')],
  [Document(metadata={'page': 3, 'source': '../example_data/nke-10k-2023.pdf', 'start_index': 0}, page_content='Table of Contents\nPART I\nITEM 1. BUSINESS\nGENERAL\nNIKE, Inc. was incorporated in 1967 under the laws of the State of Oregon. As used in this Annual Report on Form 10-K (this "Annual Report"), the terms "we," "us," "our,"\n"NIKE" and the "Company" refer to NIKE, Inc. and its predecessors, subsidiaries and affiliates, collectively, unless the context indicates otherwise.\nOur principal business activity is the design, development and worldwide marketing and selling of athletic footwear, apparel, equipment, accessories and services. NIKE is\nthe largest seller of athletic footwear and apparel in the world. We sell our products through NIKE Direct operations, which are comprised of both NIKE-owned retail stores\nand sales through our digital platforms (also referred to as "NIKE Brand Digital"), to retail accounts and to a mix of independent distributors, licensees and sales')]]
 ```
 
 `VectorStoreRetriever` supports search types of `"similarity"` (default), `"mmr"` (maximum marginal relevance), and `"similarity_score_threshold"`. Use the last option to filter documents by similarity score.
 
-You can use retrievers in more complex apps such as [retrieval-augmented generation (RAG)](/oss/python/deepagents/retrieval), which combine a question with retrieved context in a prompt for an LLM. To learn more about building such an application, check out the [RAG tutorial](/oss/python/deepagents/rag) tutorial.
+You can use retrievers in more complex apps such as retrieval-augmented generation (RAG), which combine a question with retrieved context in a prompt for an LLM. To learn more about building such an application, check out the RAG tutorial tutorial.
 
 ## Next steps
 
@@ -814,12 +758,11 @@ You've now seen how to build a semantic search engine over a PDF document.
 
 For more information see:
 
-* [Available embedding integrations](/oss/python/integrations/embeddings)
-* [Available vector store integrations](/oss/python/integrations/vectorstores)
+* Available embedding integrations
+* Available vector store integrations
 
 For more on RAG:
 
-* [Retrieval overview](/oss/python/deepagents/retrieval)
-* [RAG with Deep Agents](/oss/python/deepagents/rag)
-* [Evaluate a RAG application](/langsmith/evaluate-rag-tutorial)
-
+* Retrieval overview
+* RAG with Deep Agents
+* Evaluate a RAG application

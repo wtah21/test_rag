@@ -13,7 +13,7 @@ LangChain agents are built on LangGraph, so they support the same streaming stac
 
 For most application and frontend use cases, use **Event Streaming** through `stream_events(..., version="v3")`. Event Streaming returns a run object with typed projections, so each projection can be consumed independently instead of parsing stream-mode tuples.
 
-```py theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```py
 from langchain.agents import create_agent
 
 
@@ -60,7 +60,7 @@ final_state = stream.output
 
 Use `stream.messages` when you want model output from each LLM call.
 
-```py theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```py
 stream = agent.stream_events(input, version="v3")
 
 for message in stream.messages:
@@ -80,7 +80,7 @@ for message in stream.messages:
 
 Reasoning content uses the same shape as text content, but it is available only when the selected model emits reasoning blocks.
 
-```py theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```py
 stream = agent.stream_events(input, version="v3")
 
 for message in stream.messages:
@@ -91,7 +91,7 @@ for message in stream.messages:
         print(delta, end="", flush=True)
 ```
 
-See the [reasoning guide](/oss/python/langchain/models#reasoning) and your provider's integration page for model configuration details.
+See the reasoning guide and your provider's integration page for model configuration details.
 
 ## Tool calls
 
@@ -100,7 +100,7 @@ There are two useful tool-call projections:
 * `message.tool_calls` streams tool-call argument chunks while the model is producing the tool call.
 * `stream.tool_calls` streams the lifecycle of tool execution after the tool call starts.
 
-```py theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```py
 stream = agent.stream_events(input, version="v3")
 
 for message in stream.messages:
@@ -124,7 +124,7 @@ When a `create_agent` call invokes another named `create_agent` (via a wrapping 
 
 Named sub-agents surface on the dedicated `stream.subagents` projection. Each handle exposes the inner agent's own `.messages`, `.values`, `.tool_calls`, and `.output`, plus `.name` (the `name=` you passed) and `.cause` (the tool call that dispatched the sub-agent). Because only named `create_agent` runs appear here, you don't need to filter plain subgraphs out.
 
-```py theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```py
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 
@@ -174,7 +174,7 @@ Plain `StateGraph` subgraphs invoked from a tool also surface on `stream.subgrap
 
 Use `stream.values` for state snapshots and `stream.output` for the final agent state.
 
-```py theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```py
 stream = agent.stream_events(input, version="v3")
 
 for snapshot in stream.values:
@@ -187,7 +187,7 @@ final_state = stream.output
 
 For concurrent consumption in async code, use `astream_events` with `asyncio.gather`:
 
-```py theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```py
 import asyncio
 
 stream = await agent.astream_events(input, version="v3")
@@ -205,7 +205,7 @@ await asyncio.gather(consume_messages(), consume_tool_calls())
 
 For synchronous code, use `stream.interleave(...)` instead:
 
-```py theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```py
 stream = agent.stream_events(input, version="v3")
 
 for name, item in stream.interleave("messages", "tool_calls", "values"):
@@ -219,7 +219,7 @@ for name, item in stream.interleave("messages", "tool_calls", "values"):
 
 To access channels that aren't exposed as typed projections, or to inspect the full event envelope, iterate raw protocol events:
 
-```py theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```py
 for event in stream:
     print(event["method"], event["params"]["namespace"], event["params"]["data"])
 ```
@@ -228,7 +228,7 @@ for event in stream:
 
 Use custom stream transformers when your application needs a projection that is not built in, such as retrieval progress, artifacts, or domain-specific events.
 
-```py theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```py
 stream = agent.stream_events(
     input,
     version="v3",
@@ -241,13 +241,13 @@ for activity in stream.extensions["tool_activity"]:
 
 ### Register transformers on middleware
 
-<Note>Middleware-registered transformers require `langchain>=1.3.2`.</Note>
+Middleware-registered transformers require `langchain>=1.3.2`.
 
 Middleware can declare stream transformer factories alongside its hooks and tools. The factory shape differs between languages:
 
 Set the `transformers` attribute on an `AgentMiddleware` subclass to a sequence of factories. Each factory has the shape `Callable[[tuple[str, ...]], StreamTransformer]` and is invoked as `factory(scope)`, where `scope` is the mini-mux scope tuple (`()` for the root mux, non-empty for subgraphs). Returning a fresh transformer per call keeps each subgraph isolated.
 
-```py theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```py
 from langchain.agents import create_agent
 from langchain.agents.middleware import AgentMiddleware
 
@@ -273,7 +273,7 @@ This keeps the built-in tool-call projection in front of consumer transformers a
 
 The built-in `PIIMiddleware` uses this hook to redact PII from streamed wire output. With `apply_to_output=True`, its registered transformer scrubs detected PII from text deltas, tool-call args, tool outputs, and state snapshots before they leave the run, closing the window where `after_model` state-level redaction would otherwise let raw PII through to live readers of `stream_events(version="v3")`.
 
-```py theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```py
 from langchain.agents import create_agent
 from langchain.agents.middleware import PIIMiddleware
 
@@ -286,14 +286,14 @@ agent = create_agent(
 )
 ```
 
-See [PII detection](/oss/python/langchain/middleware/built-in#pii-detection) for the full configuration surface.
+See PII detection for the full configuration surface.
 
-See [Build your own projection](/oss/python/langgraph/event-streaming#build-your-own-projection) for the transformer contract.
+See Build your own projection for the transformer contract.
 
 ## Related
 
-* [Streaming](/oss/python/langchain/streaming) covers low-level Pregel stream modes.
-* [Build your own projection](/oss/python/langgraph/event-streaming#build-your-own-projection) covers writing application-specific projections.
-* [Frontend streaming patterns](/oss/python/langchain/frontend/overview) shows UI use cases built on streamed state.
+* Streaming covers low-level Pregel stream modes.
+* Build your own projection covers writing application-specific projections.
+* Frontend streaming patterns shows UI use cases built on streamed state.
 
 ***

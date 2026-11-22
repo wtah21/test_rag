@@ -11,9 +11,9 @@ url: https://docs.langchain.com/oss/python/integrations/splitters/split_html
 
 Splitting HTML documents into manageable chunks is essential for various text processing tasks such as natural language processing, search indexing, and more. In this guide, we will explore three different text splitters provided by LangChain that you can use to split HTML content effectively:
 
-* [**HTMLHeaderTextSplitter**](#using-htmlheadertextsplitter)
-* [**HTMLSectionSplitter**](#using-htmlsectionsplitter)
-* [**HTMLSemanticPreservingSplitter**](#using-htmlsemanticpreservingsplitter)
+* **HTMLHeaderTextSplitter**
+* **HTMLSectionSplitter**
+* **HTMLSemanticPreservingSplitter**
 
 Each of these splitters has unique features and use cases. This guide will help you understand the differences between them, why you might choose one over the others, and how to use them effectively.
 
@@ -23,11 +23,9 @@ pip install -qU langchain-text-splitters
 
 ## Overview of the splitters
 
-### [HTMLHeaderTextSplitter](#using-htmlheadertextsplitter)
+### HTMLHeaderTextSplitter
 
-<Info>
-  **Useful when you want to preserve the hierarchical structure of a document based on its headings.**
-</Info>
+**Useful when you want to preserve the hierarchical structure of a document based on its headings.**
 
 **Description**: Splits HTML text based on header tags (e.g., `<h1>`, `<h2>`, `<h3>`, etc.), and adds metadata for each header relevant to any given chunk.
 
@@ -39,11 +37,9 @@ pip install -qU langchain-text-splitters
 
 ***
 
-### [HTMLSectionSplitter](#using-htmlsectionsplitter)
+### HTMLSectionSplitter
 
-<Info>
-  Useful when you want to split HTML documents into larger sections, such as `<section>`, `<div>`, or custom-defined sections.
-</Info>
+Useful when you want to split HTML documents into larger sections, such as `<section>`, `<div>`, or custom-defined sections.
 
 **Description**: Similar to HTMLHeaderTextSplitter but focuses on splitting HTML into sections based on specified tags.
 
@@ -55,11 +51,9 @@ pip install -qU langchain-text-splitters
 
 ***
 
-### [HTMLSemanticPreservingSplitter](#using-htmlsemanticpreservingsplitter)
+### HTMLSemanticPreservingSplitter
 
-<Info>
-  \*\*Ideal when you need to ensure that structured elements are not split across chunks, preserving contextual relevancy. \*\*
-</Info>
+\*\*Ideal when you need to ensure that structured elements are not split across chunks, preserving contextual relevancy. \*\*
 
 **Description**: Splits HTML content into manageable chunks while preserving the semantic structure of important elements like tables, lists, and other HTML components.
 
@@ -92,7 +86,7 @@ pip install -qU langchain-text-splitters
 
 Let's use the following HTML document as an example:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 html_string = """
 <!DOCTYPE html>
   <html lang='en'>
@@ -161,13 +155,13 @@ html_string = """
 
 ## Using HTMLHeaderTextSplitter
 
-[HTMLHeaderTextSplitter](https://reference.langchain.com/python/langchain-text-splitters/html/HTMLHeaderTextSplitter) is a "structure-aware" [text splitter](/oss/python/integrations/splitters) that splits text at the HTML element level and adds metadata for each header "relevant" to any given chunk. It can return chunks element by element or combine elements with the same metadata, with the objectives of (a) keeping related text grouped (more or less) semantically and (b) preserving context-rich information encoded in document structures. It can be used with other text splitters as part of a chunking pipeline.
+HTMLHeaderTextSplitter is a "structure-aware" text splitter that splits text at the HTML element level and adds metadata for each header "relevant" to any given chunk. It can return chunks element by element or combine elements with the same metadata, with the objectives of (a) keeping related text grouped (more or less) semantically and (b) preserving context-rich information encoded in document structures. It can be used with other text splitters as part of a chunking pipeline.
 
-It is analogous to the [MarkdownHeaderTextSplitter](/oss/python/integrations/splitters/markdown_header_metadata_splitter) for markdown files.
+It is analogous to the MarkdownHeaderTextSplitter for markdown files.
 
 To specify what headers to split on, specify `headers_to_split_on` when instantiating `HTMLHeaderTextSplitter` as shown below.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_text_splitters import HTMLHeaderTextSplitter
 
 headers_to_split_on = [
@@ -181,7 +175,7 @@ html_header_splits = html_splitter.split_text(html_string)
 html_header_splits
 ```
 
-```text theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```text
 [Document(metadata={'Header 1': 'Main Title'}, page_content='This is an introductory paragraph with some basic content.'),
  Document(metadata={'Header 1': 'Main Title', 'Header 2': 'Section 1: Introduction'}, page_content='This section introduces the topic. Below is a list:  \nFirst item Second item Third item with bold text and a link'),
  Document(metadata={'Header 1': 'Main Title', 'Header 2': 'Section 1: Introduction', 'Header 3': 'Subsection 1.1: Details'}, page_content="This subsection provides additional details. Here's a table:"),
@@ -192,7 +186,7 @@ html_header_splits
 
 To return each element together with their associated headers, specify `return_each_element=True` when instantiating `HTMLHeaderTextSplitter`:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 html_splitter = HTMLHeaderTextSplitter(
     headers_to_split_on,
     return_each_element=True,
@@ -202,12 +196,12 @@ html_header_splits_elements = html_splitter.split_text(html_string)
 
 Comparing with the above, where elements are aggregated by their headers:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 for element in html_header_splits[:2]:
     print(element)
 ```
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 page_content='This is an introductory paragraph with some basic content.' metadata={'Header 1': 'Main Title'}
 page_content='This section introduces the topic. Below is a list:
 First item Second item Third item with bold text and a link' metadata={'Header 1': 'Main Title', 'Header 2': 'Section 1: Introduction'}
@@ -215,12 +209,12 @@ First item Second item Third item with bold text and a link' metadata={'Header 1
 
 Now each element is returned as a distinct `Document`:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 for element in html_header_splits_elements[:3]:
     print(element)
 ```
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 page_content='This is an introductory paragraph with some basic content.' metadata={'Header 1': 'Main Title'}
 page_content='This section introduces the topic. Below is a list:' metadata={'Header 1': 'Main Title', 'Header 2': 'Section 1: Introduction'}
 page_content='First item Second item Third item with bold text and a link' metadata={'Header 1': 'Main Title', 'Header 2': 'Section 1: Introduction'}
@@ -232,7 +226,7 @@ To read directly from a URL, pass the URL string into the `split_text_from_url` 
 
 Similarly, a local HTML file can be passed to the `split_text_from_file` method.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 url = "https://plato.stanford.edu/entries/goedel/"
 
 headers_to_split_on = [
@@ -254,7 +248,7 @@ html_header_splits = html_splitter.split_text_from_url(url)
 
 This can be done using the `.split_documents` method of the second splitter:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 chunk_size = 500
@@ -268,7 +262,7 @@ splits = text_splitter.split_documents(html_header_splits)
 splits[80:85]
 ```
 
-```text theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```text
 [Document(metadata={'Header 1': 'Kurt Gödel', 'Header 2': '2. Gödel’s Mathematical Work', 'Header 3': '2.2 The Incompleteness Theorems', 'Header 4': '2.2.1 The First Incompleteness Theorem'}, page_content='We see that Gödel first tried to reduce the consistency problem for analysis to that of arithmetic. This seemed to require a truth definition for arithmetic, which in turn led to paradoxes, such as the Liar paradox (“This sentence is false”) and Berry’s paradox (“The least number not defined by an expression consisting of just fourteen English words”). Gödel then noticed that such paradoxes would not necessarily arise if truth were replaced by provability. But this means that arithmetic truth'),
  Document(metadata={'Header 1': 'Kurt Gödel', 'Header 2': '2. Gödel’s Mathematical Work', 'Header 3': '2.2 The Incompleteness Theorems', 'Header 4': '2.2.1 The First Incompleteness Theorem'}, page_content='means that arithmetic truth and arithmetic provability are not co-extensive — whence the First Incompleteness Theorem.'),
  Document(metadata={'Header 1': 'Kurt Gödel', 'Header 2': '2. Gödel’s Mathematical Work', 'Header 3': '2.2 The Incompleteness Theorems', 'Header 4': '2.2.1 The First Incompleteness Theorem'}, page_content='This account of Gödel’s discovery was told to Hao Wang very much after the fact; but in Gödel’s contemporary correspondence with Bernays and Zermelo, essentially the same description of his path to the theorems is given. (See Gödel 2003a and Gödel 2003b respectively.) From those accounts we see that the undefinability of truth in arithmetic, a result credited to Tarski, was likely obtained in some form by Gödel by 1931. But he neither publicized nor published the result; the biases logicians'),
@@ -280,7 +274,7 @@ splits[80:85]
 
 There can be quite a bit of structural variation from one HTML document to another, and while `HTMLHeaderTextSplitter` will attempt to attach all "relevant" headers to any given chunk, it can sometimes miss certain headers. For example, the algorithm assumes an informational hierarchy in which headers are always at nodes "above" associated text, i.e. prior siblings, ancestors, and combinations thereof. In the following news article (as of the writing of this document), the document is structured such that the text of the top-level headline, while tagged "h1", is in a *distinct* subtree from the text elements that we'd expect it to be *"above"*—so we can observe that the "h1" element and its associated text do not show up in the chunk metadata (but, where applicable, we do see "h2" and its associated text):
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 url = "https://www.cnn.com/2023/09/25/weather/el-nino-winter-us-climate/index.html"
 
 headers_to_split_on = [
@@ -293,7 +287,7 @@ html_header_splits = html_splitter.split_text_from_url(url)
 print(html_header_splits[1].page_content[:500])
 ```
 
-```text theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```text
 No two El Niño winters are the same, but many have temperature and precipitation trends in common.
 Average conditions during an El Niño winter across the continental US.
 One of the major reasons is the position of the jet stream, which often shifts south during an El Niño winter. This shift typically brings wetter and cooler weather to the South while the North becomes drier and warmer, according to NOAA.
@@ -302,7 +296,7 @@ Because the jet stream is essentially a river of air that storms flow through, t
 
 ## Using HTMLSectionSplitter
 
-Similar in concept to the [HTMLHeaderTextSplitter](#using-htmlheadertextsplitter), the `HTMLSectionSplitter` is a "structure-aware" [text splitter](/oss/python/integrations/splitters) that splits text at the element level and adds metadata for each header "relevant" to any given chunk. It lets you split HTML by sections.
+Similar in concept to the HTMLHeaderTextSplitter, the `HTMLSectionSplitter` is a "structure-aware" text splitter that splits text at the element level and adds metadata for each header "relevant" to any given chunk. It lets you split HTML by sections.
 
 It can return chunks element by element or combine elements with the same metadata, with the objectives of (a) keeping related text grouped (more or less) semantically and (b) preserving context-rich information encoded in document structures.
 
@@ -310,7 +304,7 @@ Use `xslt_path` to provide an absolute path to transform the HTML so that it can
 
 ### How to split HTML strings:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_text_splitters import HTMLSectionSplitter
 
 headers_to_split_on = [
@@ -323,7 +317,7 @@ html_header_splits = html_splitter.split_text(html_string)
 html_header_splits
 ```
 
-```text theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```text
 [Document(metadata={'Header 1': 'Main Title'}, page_content='Main Title \n This is an introductory paragraph with some basic content.'),
  Document(metadata={'Header 2': 'Section 1: Introduction'}, page_content="Section 1: Introduction \n This section introduces the topic. Below is a list: \n \n First item \n Second item \n Third item with  bold text  and  a link \n \n \n Subsection 1.1: Details \n This subsection provides additional details. Here's a table: \n \n \n \n Header 1 \n Header 2 \n Header 3 \n \n \n \n \n Row 1, Cell 1 \n Row 1, Cell 2 \n Row 1, Cell 3 \n \n \n Row 2, Cell 1 \n Row 2, Cell 2 \n Row 2, Cell 3"),
  Document(metadata={'Header 2': 'Section 2: Media Content'}, page_content='Section 2: Media Content \n This section contains an image and a video: \n \n \n      Your browser does not support the video tag.'),
@@ -335,7 +329,7 @@ html_header_splits
 
 `HTMLSectionSplitter` can be used with other text splitters as part of a chunking pipeline. Internally, it uses the `RecursiveCharacterTextSplitter` when the section size is larger than the chunk size. It also considers the font size of the text to determine whether it is a section or not based on the determined font size threshold.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 headers_to_split_on = [
@@ -359,7 +353,7 @@ splits = text_splitter.split_documents(html_header_splits)
 splits
 ```
 
-```text theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```text
 [Document(metadata={'Header 1': 'Main Title'}, page_content='Main Title'),
  Document(metadata={'Header 1': 'Main Title'}, page_content='This is an introductory paragraph with some'),
  Document(metadata={'Header 1': 'Main Title'}, page_content='some basic content.'),
@@ -397,15 +391,13 @@ The `HTMLSemanticPreservingSplitter` is essential for splitting HTML content tha
 
 **IMPORTANT**: `max_chunk_size` is not a definite maximum size of a chunk, the calculation of max size, occurs when the preserved content is not apart of the chunk, to ensure it is not split. When we add the preserved data back in to the chunk, there is a chance the chunk size will exceed the `max_chunk_size`. This is crucial to ensure we maintain the structure of the original document
 
-<Info>
-  Notes:
+Notes:
 
-  1. We have defined a custom handler to re-format the contents of code blocks
-  2. We defined a deny list for specific html elements, to decompose them and their contents pre-processing
-  3. We have intentionally set a small chunk size to demonstrate the non-splitting of elements
-</Info>
+1. We have defined a custom handler to re-format the contents of code blocks
+2. We defined a deny list for specific html elements, to decompose them and their contents pre-processing
+3. We have intentionally set a small chunk size to demonstrate the non-splitting of elements
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 # BeautifulSoup is required to use the custom handlers
 from bs4 import Tag
 from langchain_text_splitters import HTMLSemanticPreservingSplitter
@@ -438,7 +430,7 @@ documents = splitter.split_text(html_string)
 documents
 ```
 
-```text theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```text
 [Document(metadata={'Header 1': 'Main Title'}, page_content='This is an introductory paragraph with some basic content.'),
  Document(metadata={'Header 2': 'Section 1: Introduction'}, page_content='This section introduces the topic'),
  Document(metadata={'Header 2': 'Section 1: Introduction'}, page_content='. Below is a list: First item Second item Third item with bold text and a link Subsection 1.1: Details This subsection provides additional details'),
@@ -452,7 +444,7 @@ documents
 
 In this example, we will demonstrate how the `HTMLSemanticPreservingSplitter` can preserve a table and a large list within an HTML document. The chunk size will be set to 50 characters to illustrate how the splitter ensures that these elements are not split, even when they exceed the maximum defined chunk size.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_text_splitters import HTMLSemanticPreservingSplitter
 
 html_string = """
@@ -509,7 +501,7 @@ documents = splitter.split_text(html_string)
 print(documents)
 ```
 
-```text theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```text
 [Document(metadata={'Header 1': 'Section 1'}, page_content='This section contains an important table and list'), Document(metadata={'Header 1': 'Section 1'}, page_content='that should not be split across chunks.'), Document(metadata={'Header 1': 'Section 1'}, page_content='Item Quantity Price Apples 10 $1.00 Oranges 5 $0.50 Bananas 50 $1.50'), Document(metadata={'Header 2': 'Subsection 1.1'}, page_content='Additional text in subsection 1.1 that is'), Document(metadata={'Header 2': 'Subsection 1.1'}, page_content='separated from the table and list. Here is a'), Document(metadata={'Header 2': 'Subsection 1.1'}, page_content="detailed list: Item 1: Description of item 1, which is quite detailed and important. Item 2: Description of item 2, which also contains significant information. Item 3: Description of item 3, another item that we don't want to split across chunks.")]
 ```
 
@@ -517,7 +509,7 @@ print(documents)
 
 In this example, the `HTMLSemanticPreservingSplitter` ensures that the entire table and the unordered list (`<ul>`) are preserved within their respective chunks. Even though the chunk size is set to 50 characters, the splitter recognizes that these elements should not be split and keeps them intact.
 
-This is particularly important when dealing with data tables or lists, where splitting the content could lead to loss of context or confusion. The resulting [`Document`](https://reference.langchain.com/python/langchain-core/documents/base/Document) objects retain the full structure of these elements, ensuring that the contextual relevance of the information is maintained.
+This is particularly important when dealing with data tables or lists, where splitting the content could lead to loss of context or confusion. The resulting `Document` objects retain the full structure of these elements, ensuring that the contextual relevance of the information is maintained.
 
 ### Using a custom handler
 
@@ -525,7 +517,7 @@ The `HTMLSemanticPreservingSplitter` allows you to define custom handlers for sp
 
 This can be particularly useful for elements that require special processing, such as `<iframe>` tags or specific 'data-' elements. In this example, we'll create a custom handler for `iframe` tags that converts them into Markdown-like links.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 def custom_iframe_extractor(iframe_tag):
     iframe_src = iframe_tag.get("src", "")
     return f"[iframe:{iframe_src}]({iframe_src})"
@@ -561,13 +553,13 @@ documents = splitter.split_text(html_string)
 print(documents)
 ```
 
-```text theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```text
 [Document(metadata={'Header 1': 'Section with Iframe'}, page_content='[iframe:https://example.com/embed](https://example.com/embed) Some text after the iframe'), Document(metadata={'Header 1': 'Section with Iframe'}, page_content=". Item 1: Description of item 1, which is quite detailed and important. Item 2: Description of item 2, which also contains significant information. Item 3: Description of item 3, another item that we don't want to split across chunks.")]
 ```
 
 #### Explanation
 
-In this example, we defined a custom handler for `iframe` tags that converts them into Markdown-like links. When the splitter processes the HTML content, it uses this custom handler to transform the `iframe` tags while preserving other elements like tables and lists. The resulting [`Document`](https://reference.langchain.com/python/langchain-core/documents/base/Document) objects show how the iframe is handled according to the custom logic you provided.
+In this example, we defined a custom handler for `iframe` tags that converts them into Markdown-like links. When the splitter processes the HTML content, it uses this custom handler to transform the `iframe` tags while preserving other elements like tables and lists. The resulting `Document` objects show how the iframe is handled according to the custom logic you provided.
 
 **Important**: When presvering items such as links, you should be mindful not to include `.` in your separators, or leave separators blank. `RecursiveCharacterTextSplitter` splits on full stop, which will cut links in half. Ensure you provide a separator list with `. `  instead.
 
@@ -577,7 +569,7 @@ With custom handler's, we can also override the default processing for any eleme
 
 Since our function is called when the tag is discovered, we can override the `<img>` tag and turn off `preserve_images` to insert any content we would like to embed in our chunks.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 """This example assumes you have helper methods `load_image_from_url` and an LLM agent `llm` that can process image data."""
 
 from langchain.agents import AgentExecutor

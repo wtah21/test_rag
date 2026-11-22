@@ -9,15 +9,15 @@ url: https://docs.langchain.com/oss/python/integrations/retrievers/cohere-rerank
 
 > Integrate with the Cohere reranker retriever using LangChain Python.
 
-> [Cohere](https://cohere.ai/about) is a Canadian startup that provides natural language processing models that help companies improve human-machine interactions.
+> Cohere is a Canadian startup that provides natural language processing models that help companies improve human-machine interactions.
 
-This notebook shows how to use [Cohere's rerank endpoint](https://docs.cohere.com/docs/reranking) in a retriever.
+This notebook shows how to use Cohere's rerank endpoint in a retriever.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 pip install -qU  cohere
 ```
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 pip install -qU  faiss
 
 # OR  (depending on Python version)
@@ -25,7 +25,7 @@ pip install -qU  faiss
 pip install -qU  faiss-cpu
 ```
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 # get a new token: https://dashboard.cohere.ai/
 
 import getpass
@@ -38,7 +38,7 @@ if "LANGSMITH_API_KEY" not in os.environ:
     os.environ["LANGSMITH_API_KEY"] = getpass.getpass("Langsmith API Key:")
 ```
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 # Helper function for printing docs
 
 
@@ -54,11 +54,9 @@ def pretty_print_docs(docs):
 
 Let's start by initializing a simple vector store retriever and storing the 2023 State of the Union speech (in chunks). We can set up the retriever to retrieve a high number (20) of docs.
 
-<Warning>
-  The `langchain-community` package is no longer maintained. Examples that import from `langchain_community` may be outdated or broken. Use with caution.
-</Warning>
+The `langchain-community` package is no longer maintained. Examples that import from `langchain_community` may be outdated or broken. Use with caution.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_community.document_loaders import TextLoader
 from langchain_cohere import CohereEmbeddings
 from langchain_community.vectorstores import FAISS
@@ -76,7 +74,7 @@ docs = retriever.invoke(query)
 pretty_print_docs(docs)
 ```
 
-```text theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```text
 Document 1:
 
 One of the most serious constitutional responsibilities a President has is nominating someone to serve on the United States Supreme Court.
@@ -285,7 +283,7 @@ And with an unwavering resolve that freedom will always triumph over tyranny.
 Now let's wrap our base retriever with a `ContextualCompressionRetriever`. We'll add an `CohereRerank`, uses the Cohere rerank endpoint to rerank the returned results.
 Do note that it is mandatory to specify the model name in CohereRerank!
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langsmith import Client
 from langchain_classic.retrievers.contextual_compression import (
     ContextualCompressionRetriever,
@@ -306,7 +304,7 @@ pretty_print_docs(compressed_docs)
 
 You can of course use this retriever within a QA pipeline
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
@@ -328,11 +326,11 @@ qa_chain = (
 )
 ```
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 qa_chain.invoke("What did the president say about Ketanji Jackson Brown?")
 ```
 
-```text theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```text
  " The president speaks highly of Ketanji Brown Jackson, stating that she is one of the nation's top legal minds, and will continue the legacy of excellence of Justice Breyer. The president also mentions that he worked with her family and that she comes from a family of public school educators and police officers. Since her nomination, she has received support from various groups, including the Fraternal Order of Police and judges from both major political parties. \n\nWould you like me to extract another sentence from the provided text? "
 ```
 

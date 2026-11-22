@@ -9,7 +9,7 @@ url: https://docs.langchain.com/oss/python/langchain/middleware/built-in
 
 > Prebuilt middleware for common agent use cases
 
-LangChain and [Deep Agents](/oss/python/deepagents/overview) provide prebuilt middleware for common use cases. Each middleware is production-ready and configurable for your specific needs.
+LangChain and Deep Agents provide prebuilt middleware for common use cases. Each middleware is production-ready and configurable for your specific needs.
 
 ## Provider-agnostic middleware
 
@@ -17,25 +17,25 @@ The following middleware work with any LLM provider:
 
 | Middleware                                    | Description                                                                                   |
 | --------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| [Tool error](#tool-error)                     | Catch tool execution exceptions and convert them to error messages for the model.             |
-| [Tool retry](#tool-retry)                     | Automatically retry failed tool calls with exponential backoff.                               |
-| [Model retry](#model-retry)                   | Automatically retry failed model calls with exponential backoff.                              |
-| [Model fallback](#model-fallback)             | Automatically fallback to alternative models when primary fails.                              |
-| [Summarization](#summarization)               | Automatically summarize conversation history when approaching token limits.                   |
-| [Human-in-the-loop](#human-in-the-loop)       | Pause execution for human approval of tool calls.                                             |
-| [Model call limit](#model-call-limit)         | Limit the number of model calls to prevent excessive costs.                                   |
-| [Tool call limit](#tool-call-limit)           | Control tool execution by limiting call counts.                                               |
-| [PII detection](#pii-detection)               | Detect and handle Personally Identifiable Information (PII).                                  |
-| [To-do list](#to-do-list)                     | Equip agents with task planning and tracking capabilities.                                    |
-| [LLM tool selector](#llm-tool-selector)       | Use an LLM to select relevant tools before calling main model.                                |
-| [Provider tool search](#provider-tool-search) | Defer tools behind providers' server-side tool search, surfacing them on demand.              |
-| [Shell tool](#shell-tool)                     | Expose a persistent shell session to agents for command execution.                            |
-| [Filesystem](#filesystem-middleware)          | Provide agents with a filesystem for storing context and long-term memories.                  |
-| [Subagent](#subagent)                         | Add the ability to spawn subagents.                                                           |
-| [Rubric grading (Beta)](#rubric-grading)      | Apply LLM-as-a-judge grading so agents self-evaluate and iterate until a rubric is satisfied. |
-| [File search](#file-search)                   | Provide Glob and Grep search tools over filesystem files.                                     |
-| [Context editing](#context-editing)           | Manage conversation context by trimming or clearing tool uses.                                |
-| [LLM tool emulator](#llm-tool-emulator)       | Emulate tool execution using an LLM for testing purposes.                                     |
+| Tool error                     | Catch tool execution exceptions and convert them to error messages for the model.             |
+| Tool retry                     | Automatically retry failed tool calls with exponential backoff.                               |
+| Model retry                   | Automatically retry failed model calls with exponential backoff.                              |
+| Model fallback             | Automatically fallback to alternative models when primary fails.                              |
+| Summarization               | Automatically summarize conversation history when approaching token limits.                   |
+| Human-in-the-loop       | Pause execution for human approval of tool calls.                                             |
+| Model call limit         | Limit the number of model calls to prevent excessive costs.                                   |
+| Tool call limit           | Control tool execution by limiting call counts.                                               |
+| PII detection               | Detect and handle Personally Identifiable Information (PII).                                  |
+| To-do list                     | Equip agents with task planning and tracking capabilities.                                    |
+| LLM tool selector       | Use an LLM to select relevant tools before calling main model.                                |
+| Provider tool search | Defer tools behind providers' server-side tool search, surfacing them on demand.              |
+| Shell tool                     | Expose a persistent shell session to agents for command execution.                            |
+| Filesystem          | Provide agents with a filesystem for storing context and long-term memories.                  |
+| Subagent                         | Add the ability to spawn subagents.                                                           |
+| Rubric grading (Beta)      | Apply LLM-as-a-judge grading so agents self-evaluate and iterate until a rubric is satisfied. |
+| File search                   | Provide Glob and Grep search tools over filesystem files.                                     |
+| Context editing           | Manage conversation context by trimming or clearing tool uses.                                |
+| LLM tool emulator       | Emulate tool execution using an LLM for testing purposes.                                     |
 
 ### Tool error
 
@@ -45,17 +45,13 @@ Catch exceptions raised during tool execution and convert them into error `ToolM
 * Surfacing controlled, sanitized error messages instead of raw exception details.
 * Preventing unexpected tool exceptions from crashing the agent.
 
-<Note>
-  Tool error middleware does not automatically retry failed calls. For retries, compose with [Tool retry](#tool-retry) middleware placed *inner* (earlier in the `middleware` list) and configured with `on_failure="error"` so that exceptions reach the tool error middleware. See the [full example](#tool-error-full-example) below.
-</Note>
+Tool error middleware does not automatically retry failed calls. For retries, compose with Tool retry middleware placed *inner* (earlier in the `middleware` list) and configured with `on_failure="error"` so that exceptions reach the tool error middleware. See the full example below.
 
-**API reference:** [`ToolErrorMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/tool_error/ToolErrorMiddleware)
+**API reference:** `ToolErrorMiddleware`
 
-<Note>
-  `ToolErrorMiddleware` requires `langchain>=1.3.14`.
-</Note>
+`ToolErrorMiddleware` requires `langchain>=1.3.14`.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import ToolErrorMiddleware
 
@@ -73,24 +69,20 @@ agent = create_agent(
 )
 ```
 
-<Accordion title="Configuration options">
-  <ParamField body="on_error" type="Callable[[Exception, ToolCallRequest], str | list[ContentBlock] | None]">
+Configuration options
+on_error (Callable[[Exception, ToolCallRequest], str | list[ContentBlock] | None])
     Sync handler called for each exception raised by tool execution. Return content (a `str` or list of content blocks) to convert the exception into a `ToolMessage(status="error")`. Return `None` or omit a return statement to let the exception propagate. Used on the sync path and, unless `aon_error` is given, on the async path.
-  </ParamField>
 
-  <ParamField body="aon_error" type="Callable[[Exception, ToolCallRequest], Awaitable[str | list[ContentBlock] | None]]">
+aon_error (Callable[[Exception, ToolCallRequest], Awaitable[str | list[ContentBlock] | None]])
     Optional async handler, used on the async execution path. Falls back to `on_error` when not provided.
-  </ParamField>
 
-  <ParamField body="tools" type="list[BaseTool | str]">
+tools (list[BaseTool | str])
     Optional list of tools or tool names to apply error handling to. If `None`, applies to all tools.
-  </ParamField>
-</Accordion>
 
-<Accordion title="Tool error full example">
-  The `on_error` handler receives the exception and the `ToolCallRequest` (which includes the tool call dict with name, args, and call ID). Return `None` for exceptions you do not want to handle, and they will propagate normally.
+Tool error full example
+The `on_error` handler receives the exception and the `ToolCallRequest` (which includes the tool call dict with name, args, and call ID). Return `None` for exceptions you do not want to handle, and they will propagate normally.
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   from langchain.agents import create_agent
   from langchain.agents.middleware import ToolErrorMiddleware, ToolRetryMiddleware
 
@@ -128,10 +120,7 @@ agent = create_agent(
   )
   ```
 
-  <Note>
     Prefer returning content that names the exception type over the raw exception message, which may carry sensitive or internal detail. The `on_error` handler controls disclosure: the raw exception message is never sent to the model unless you choose to include it.
-  </Note>
-</Accordion>
 
 ### Tool retry
 
@@ -141,9 +130,9 @@ Automatically retry failed tool calls with configurable exponential backoff. Too
 * Improving reliability of network-dependent tools.
 * Building resilient agents that gracefully handle temporary errors.
 
-**API reference:** [`ToolRetryMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/tool_retry/ToolRetryMiddleware)
+**API reference:** `ToolRetryMiddleware`
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import ToolRetryMiddleware
 
@@ -160,20 +149,17 @@ agent = create_agent(
 )
 ```
 
-<Accordion title="Configuration options">
-  <ParamField body="max_retries" type="number" default="2">
+Configuration options
+max_retries (number, 2)
     Maximum number of retry attempts after the initial call (3 total attempts with default)
-  </ParamField>
 
-  <ParamField body="tools" type="list[BaseTool | str]">
+tools (list[BaseTool | str])
     Optional list of tools or tool names to apply retry logic to. If `None`, applies to all tools.
-  </ParamField>
 
-  <ParamField body="retry_on" type="tuple[type[Exception], ...] | callable" default="default_retry_on">
-    Either a tuple of exception types to retry on, or a callable that takes an exception and returns `True` if it should be retried. With `langchain>=1.3.16`, the default retries retryable [model errors](/oss/python/langchain/models#model-exceptions) and all unclassified exceptions, and no longer retries model errors marked non-retryable.
-  </ParamField>
+retry_on (tuple[type[Exception], ...] | callable, default_retry_on)
+    Either a tuple of exception types to retry on, or a callable that takes an exception and returns `True` if it should be retried. With `langchain>=1.3.16`, the default retries retryable model errors and all unclassified exceptions, and no longer retries model errors marked non-retryable.
 
-  <ParamField body="on_failure" type="string | callable" default="continue">
+on_failure (string | callable, continue)
     Behavior when all retries are exhausted. Options:
 
     * `'continue'` (default) - Return a `ToolMessage` with error details, allowing the LLM to handle the failure
@@ -181,43 +167,37 @@ agent = create_agent(
     * Custom callable - Function that takes the exception and returns a string for the `ToolMessage` content
 
     **Deprecated values:** `'return_message'` (use `'continue'` instead) and `'raise'` (use `'error'` instead).
-  </ParamField>
 
-  <ParamField body="backoff_factor" type="number" default="2.0">
+backoff_factor (number, 2.0)
     Multiplier for exponential backoff. Each retry waits `initial_delay * (backoff_factor ** retry_number)` seconds. Set to `0.0` for constant delay.
-  </ParamField>
 
-  <ParamField body="initial_delay" type="number" default="1.0">
+initial_delay (number, 1.0)
     Initial delay in seconds before first retry
-  </ParamField>
 
-  <ParamField body="max_delay" type="number" default="60.0">
+max_delay (number, 60.0)
     Maximum delay in seconds between retries (caps exponential backoff growth)
-  </ParamField>
 
-  <ParamField body="jitter" type="boolean" default="true">
+jitter (boolean, true)
     Whether to add random jitter (`±25%`) to delay to avoid thundering herd
-  </ParamField>
-</Accordion>
 
-<Accordion title="Full example">
-  The middleware automatically retries failed tool calls with exponential backoff.
+Full example
+The middleware automatically retries failed tool calls with exponential backoff.
 
-  **Key configuration:**
+**Key configuration:**
 
-  * `max_retries` - Number of retry attempts (default: 2)
-  * `backoff_factor` - Multiplier for exponential backoff (default: 2.0)
-  * `initial_delay` - Starting delay in seconds (default: 1.0)
-  * `max_delay` - Cap on delay growth (default: 60.0)
-  * `jitter` - Add random variation (default: True)
+* `max_retries` - Number of retry attempts (default: 2)
+* `backoff_factor` - Multiplier for exponential backoff (default: 2.0)
+* `initial_delay` - Starting delay in seconds (default: 1.0)
+* `max_delay` - Cap on delay growth (default: 60.0)
+* `jitter` - Add random variation (default: True)
 
-  **Failure handling:**
+**Failure handling:**
 
-  * `on_failure='continue'` (default) - Return error message
-  * `on_failure='error'` - Re-raise exception
-  * Custom function - Function returning error message
+* `on_failure='continue'` (default) - Return error message
+* `on_failure='error'` - Re-raise exception
+* Custom function - Function returning error message
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   from langchain.agents import create_agent
   from langchain.agents.middleware import ToolRetryMiddleware
 
@@ -239,7 +219,6 @@ agent = create_agent(
       ],
   )
   ```
-</Accordion>
 
 ### Model retry
 
@@ -249,9 +228,9 @@ Automatically retry failed model calls with configurable exponential backoff. Mo
 * Improving reliability of network-dependent model requests.
 * Building resilient agents that gracefully handle temporary model errors.
 
-**API reference:** [`ModelRetryMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/model_retry/ModelRetryMiddleware)
+**API reference:** `ModelRetryMiddleware`
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import ModelRetryMiddleware
 
@@ -268,44 +247,36 @@ agent = create_agent(
 )
 ```
 
-<Accordion title="Configuration options">
-  <ParamField body="max_retries" type="number" default="2">
+Configuration options
+max_retries (number, 2)
     Maximum number of retry attempts after the initial call (3 total attempts with default)
-  </ParamField>
 
-  <ParamField body="retry_on" type="tuple[type[Exception], ...] | callable" default="default_retry_on">
-    Either a tuple of exception types to retry on, or a callable that takes an exception and returns `True` if it should be retried. With `langchain>=1.3.16`, the default retries retryable [model errors](/oss/python/langchain/models#model-exceptions) and all unclassified exceptions, and no longer retries model errors marked non-retryable.
-  </ParamField>
+retry_on (tuple[type[Exception], ...] | callable, default_retry_on)
+    Either a tuple of exception types to retry on, or a callable that takes an exception and returns `True` if it should be retried. With `langchain>=1.3.16`, the default retries retryable model errors and all unclassified exceptions, and no longer retries model errors marked non-retryable.
 
-  <ParamField body="on_failure" type="string | callable" default="continue">
+on_failure (string | callable, continue)
     Behavior when all retries are exhausted. Options:
 
     * `'continue'` (default) - Return an `AIMessage` with error details, allowing the agent to potentially handle the failure gracefully
     * `'error'` - Re-raise the exception (stops agent execution)
     * Custom callable - Function that takes the exception and returns a string for the `AIMessage` content
-  </ParamField>
 
-  <ParamField body="backoff_factor" type="number" default="2.0">
+backoff_factor (number, 2.0)
     Multiplier for exponential backoff. Each retry waits `initial_delay * (backoff_factor ** retry_number)` seconds. Set to `0.0` for constant delay.
-  </ParamField>
 
-  <ParamField body="initial_delay" type="number" default="1.0">
+initial_delay (number, 1.0)
     Initial delay in seconds before first retry
-  </ParamField>
 
-  <ParamField body="max_delay" type="number" default="60.0">
+max_delay (number, 60.0)
     Maximum delay in seconds between retries (caps exponential backoff growth)
-  </ParamField>
 
-  <ParamField body="jitter" type="boolean" default="true">
+jitter (boolean, true)
     Whether to add random jitter (`±25%`) to delay to avoid thundering herd
-  </ParamField>
-</Accordion>
 
-<Accordion title="Full example">
-  The middleware automatically retries failed model calls with exponential backoff.
+Full example
+The middleware automatically retries failed model calls with exponential backoff.
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   from langchain.agents import create_agent
   from langchain.agents.middleware import ModelRetryMiddleware
 
@@ -376,7 +347,6 @@ agent = create_agent(
       on_failure="error",  # Re-raise exception instead of returning message
   )
   ```
-</Accordion>
 
 ### Model fallback
 
@@ -386,9 +356,9 @@ Automatically fallback to alternative models when the primary model fails. Model
 * Cost optimization by falling back to cheaper models.
 * Provider redundancy across OpenAI, Anthropic, etc.
 
-**API reference:** [`ModelFallbackMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/model_fallback/ModelFallbackMiddleware)
+**API reference:** `ModelFallbackMiddleware`
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import ModelFallbackMiddleware
 
@@ -404,19 +374,14 @@ agent = create_agent(
 )
 ```
 
-<Callout icon="player-play" iconType="solid">
-  Watch this [video guide](https://www.youtube.com/watch?v=8rCRO0DUeIM) demonstrating Model Fallback middleware behavior.
-</Callout>
+Watch this video guide demonstrating Model Fallback middleware behavior.
 
-<Accordion title="Configuration options">
-  <ParamField body="first_model" type="string | BaseChatModel" required>
+Configuration options
+first_model (string | BaseChatModel, required)
     First fallback model to try when the primary model fails. Can be a model identifier string (e.g., `'openai:gpt-5.4-mini'`) or a `BaseChatModel` instance.
-  </ParamField>
 
-  <ParamField body="*additional_models" type="string | BaseChatModel">
+*additional_models (string | BaseChatModel)
     Additional fallback models to try in order if previous models fail
-  </ParamField>
-</Accordion>
 
 ### Summarization
 
@@ -426,13 +391,11 @@ Automatically summarize conversation history when approaching token limits, pres
 * Multi-turn dialogues with extensive history.
 * Applications where preserving full conversation context matters.
 
-<Note>
-  Summarization is text-oriented context compression. It does not resize, downsample, or otherwise compress image/audio/video payloads. Recent messages retained by `keep` still include their original multimodal blocks, while older multimodal messages that are summarized are represented only by the generated text summary. For image-heavy applications, store media in a filesystem or object store and pass URLs or file references through message history.
-</Note>
+Summarization is text-oriented context compression. It does not resize, downsample, or otherwise compress image/audio/video payloads. Recent messages retained by `keep` still include their original multimodal blocks, while older multimodal messages that are summarized are represented only by the generated text summary. For image-heavy applications, store media in a filesystem or object store and pass URLs or file references through message history.
 
-**API reference:** [`SummarizationMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/summarization/SummarizationMiddleware)
+**API reference:** `SummarizationMiddleware`
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import SummarizationMiddleware
 
@@ -449,11 +412,11 @@ agent = create_agent(
 )
 ```
 
-<Accordion title="Configuration options">
-  <Tip>
-    The `fraction` conditions for `trigger` and `keep` (shown below) rely on a chat model's [profile data](/oss/python/langchain/models#model-profiles) if using `langchain>=1.1`. If data are not available, use another condition or specify manually:
+Configuration options
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    The `fraction` conditions for `trigger` and `keep` (shown below) rely on a chat model's profile data if using `langchain>=1.1`. If data are not available, use another condition or specify manually:
+
+    ```python
     from langchain.chat_models import init_chat_model
 
     custom_profile = {
@@ -462,17 +425,15 @@ agent = create_agent(
     }
     model = init_chat_model("gpt-5.5", profile=custom_profile)
     ```
-  </Tip>
 
-  <ParamField body="model" type="string | BaseChatModel" required>
-    Model for generating summaries. Can be a model identifier string (e.g., `'openai:gpt-5.4-mini'`) or a `BaseChatModel` instance. See [`init_chat_model`](https://reference.langchain.com/python/langchain/chat_models/base/init_chat_model) for more information.
-  </ParamField>
+model (string | BaseChatModel, required)
+    Model for generating summaries. Can be a model identifier string (e.g., `'openai:gpt-5.4-mini'`) or a `BaseChatModel` instance. See `init_chat_model` for more information.
 
-  <ParamField body="trigger" type="ContextSize | TriggerClause | list[ContextSize | TriggerClause] | None">
+trigger (ContextSize | TriggerClause | list[ContextSize | TriggerClause] | None)
     Condition(s) for triggering summarization. Can be:
 
-    * A single [`ContextSize`](https://reference.langchain.com/python/langchain/agents/middleware/summarization/ContextSize) tuple (the specified threshold must be met)
-    * A single [`TriggerClause`](https://reference.langchain.com/python/langchain/agents/middleware/summarization/TriggerClause) dict (all specified thresholds must be met - AND logic)
+    * A single `ContextSize` tuple (the specified threshold must be met)
+    * A single `TriggerClause` dict (all specified thresholds must be met - AND logic)
     * A list mixing either form (any item must be met - OR logic)
 
     Supported thresholds are:
@@ -481,65 +442,56 @@ agent = create_agent(
     * `tokens` (int): Absolute token count
     * `messages` (int): Message count
 
-    A [`ContextSize`](https://reference.langchain.com/python/langchain/agents/middleware/summarization/ContextSize) tuple expresses exactly one threshold. A [`TriggerClause`](https://reference.langchain.com/python/langchain/agents/middleware/summarization/TriggerClause) dict can include one or more thresholds, e.g. `{"tokens": 4000, "messages": 10}`, and all thresholds in the dict must be met (AND).
+    A `ContextSize` tuple expresses exactly one threshold. A `TriggerClause` dict can include one or more thresholds, e.g. `{"tokens": 4000, "messages": 10}`, and all thresholds in the dict must be met (AND).
 
-    Each [`TriggerClause`](https://reference.langchain.com/python/langchain/agents/middleware/summarization/TriggerClause) dict must specify at least one threshold. If `trigger` is not provided, summarization will not trigger automatically.
+    Each `TriggerClause` dict must specify at least one threshold. If `trigger` is not provided, summarization will not trigger automatically.
 
-    See the API reference for [`ContextSize`](https://reference.langchain.com/python/langchain/agents/middleware/summarization/ContextSize) and [`TriggerClause`](https://reference.langchain.com/python/langchain/agents/middleware/summarization/TriggerClause) for more information.
-  </ParamField>
+    See the API reference for `ContextSize` and `TriggerClause` for more information.
 
-  <ParamField body="keep" type="ContextSize" default="('messages', 20)">
+keep (ContextSize, ('messages', 20))
     How much context to preserve after summarization. Specify exactly one of:
 
     * `fraction` (float): Fraction of model's context size to keep (0-1)
     * `tokens` (int): Absolute token count to keep
     * `messages` (int): Number of recent messages to keep
 
-    See the API reference for [`ContextSize`](https://reference.langchain.com/python/langchain/agents/middleware/summarization/ContextSize) for more information.
-  </ParamField>
+    See the API reference for `ContextSize` for more information.
 
-  <ParamField body="token_counter" type="function">
+token_counter (function)
     Custom token counting function. Defaults to character-based counting.
-  </ParamField>
 
-  <ParamField body="summary_prompt" type="string">
+summary_prompt (string)
     Custom prompt template for summarization. Uses built-in template if not specified. The template should include `{messages}` placeholder where conversation history will be inserted.
-  </ParamField>
 
-  <ParamField body="trim_tokens_to_summarize" type="number" default="4000">
+trim_tokens_to_summarize (number, 4000)
     Maximum number of tokens to include when generating the summary. Messages will be trimmed to fit this limit before summarization.
-  </ParamField>
 
-  <ParamField body="summary_prefix" type="string" deprecated>
+summary_prefix (string)
     **Deprecated:** Use `summary_prompt` to provide the full prompt instead.
-  </ParamField>
 
-  <ParamField body="max_tokens_before_summary" type="number" deprecated>
+max_tokens_before_summary (number)
     **Deprecated:** Use `trigger: ("tokens", value)` instead. Token threshold for triggering summarization.
-  </ParamField>
 
-  <ParamField body="messages_to_keep" type="number" deprecated>
+messages_to_keep (number)
     **Deprecated:** Use `keep: ("messages", value)` instead. Recent messages to preserve.
-  </ParamField>
-</Accordion>
 
-<Accordion title="Full example">
-  The summarization middleware monitors message token counts and automatically summarizes older messages when thresholds are reached.
+Full example
+The summarization middleware monitors message token counts and automatically summarizes older messages when thresholds are reached.
 
-  **Trigger conditions** control when summarization runs:
+**Trigger conditions** control when summarization runs:
 
-  * A single threshold triggers when that threshold is met
-  * A trigger clause with multiple thresholds triggers only when all thresholds are met (AND logic)
-  * A list of trigger conditions triggers when any item is met (OR logic)
-  * Each threshold can use `fraction` (of model's context size), `tokens` (absolute count), or `messages` (message count)
+* A single threshold triggers when that threshold is met
+* A trigger clause with multiple thresholds triggers only when all thresholds are met (AND logic)
+* A list of trigger conditions triggers when any item is met (OR logic)
+* Each threshold can use `fraction` (of model's context size), `tokens` (absolute count), or `messages` (message count)
 
-  **Keep condition** control how much context to preserve (specify exactly one):
+**Keep condition** control how much context to preserve (specify exactly one):
 
-  * `fraction` - Fraction of model's context size to keep
-  * `tokens` - Absolute token count to keep
-  * `messages` - Number of recent messages to keep
+* `fraction` - Fraction of model's context size to keep
+* `tokens` - Absolute token count to keep
+* `messages` - Number of recent messages to keep
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   from langchain.agents import create_agent
   from langchain.agents.middleware import SummarizationMiddleware
 
@@ -616,23 +568,20 @@ agent = create_agent(
       ],
   )
   ```
-</Accordion>
 
 ### Human-in-the-loop
 
-Pause agent execution for human approval, editing, or rejection of tool calls before they execute. [Human-in-the-loop](/oss/python/langchain/human-in-the-loop) is useful for the following:
+Pause agent execution for human approval, editing, or rejection of tool calls before they execute. Human-in-the-loop is useful for the following:
 
 * High-stakes operations requiring human approval (e.g. database writes, financial transactions).
 * Compliance workflows where human oversight is mandatory.
 * Long-running conversations where human feedback guides the agent.
 
-**API reference:** [`HumanInTheLoopMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/human_in_the_loop/HumanInTheLoopMiddleware)
+**API reference:** `HumanInTheLoopMiddleware`
 
-<Warning>
-  Human-in-the-loop middleware requires a [checkpointer](/oss/python/langgraph/checkpointers#checkpoints) to maintain state across interruptions.
-</Warning>
+Human-in-the-loop middleware requires a checkpointer to maintain state across interruptions.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 from langgraph.checkpoint.memory import InMemorySaver
@@ -663,13 +612,9 @@ agent = create_agent(
 )
 ```
 
-<Tip>
-  For complete examples, configuration options, and integration patterns, see the [Human-in-the-loop documentation](/oss/python/langchain/human-in-the-loop).
-</Tip>
+For complete examples, configuration options, and integration patterns, see the Human-in-the-loop documentation.
 
-<Callout icon="player-play" iconType="solid">
-  Watch this [video guide](https://www.youtube.com/watch?v=SpfT6-YAVPk) demonstrating Human-in-the-loop middleware behavior.
-</Callout>
+Watch this video guide demonstrating Human-in-the-loop middleware behavior.
 
 ### Model call limit
 
@@ -679,9 +624,9 @@ Limit the number of model calls to prevent infinite loops or excessive costs. Mo
 * Enforcing cost controls on production deployments.
 * Testing agent behavior within specific call budgets.
 
-**API reference:** [`ModelCallLimitMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/model_call_limit/ModelCallLimitMiddleware)
+**API reference:** `ModelCallLimitMiddleware`
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import ModelCallLimitMiddleware
 from langgraph.checkpoint.memory import InMemorySaver
@@ -700,23 +645,17 @@ agent = create_agent(
 )
 ```
 
-<Callout icon="player-play" iconType="solid">
-  Watch this [video guide](https://www.youtube.com/watch?v=nJEER0uaNkE) demonstrating Model Call Limit middleware behavior.
-</Callout>
+Watch this video guide demonstrating Model Call Limit middleware behavior.
 
-<Accordion title="Configuration options">
-  <ParamField body="thread_limit" type="number">
+Configuration options
+thread_limit (number)
     Maximum model calls across all runs in a thread. Defaults to no limit.
-  </ParamField>
 
-  <ParamField body="run_limit" type="number">
+run_limit (number)
     Maximum model calls per single invocation. Defaults to no limit.
-  </ParamField>
 
-  <ParamField body="exit_behavior" type="string" default="end">
+exit_behavior (string, end)
     Behavior when limit is reached. Options: `'end'` (graceful termination) or `'error'` (raise exception)
-  </ParamField>
-</Accordion>
 
 ### Tool call limit
 
@@ -727,9 +666,9 @@ Control agent execution by limiting the number of tool calls, either globally ac
 * Enforcing rate limits on specific tool usage.
 * Protecting against runaway agent loops.
 
-**API reference:** [`ToolCallLimitMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/tool_call_limit/ToolCallLimitMiddleware)
+**API reference:** `ToolCallLimitMiddleware`
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import ToolCallLimitMiddleware
 
@@ -749,47 +688,40 @@ agent = create_agent(
 )
 ```
 
-<Callout icon="player-play" iconType="solid">
-  Watch this [video guide](https://www.youtube.com/watch?v=6gYlaJJ8t0w) demonstrating Tool Call Limit middleware behavior.
-</Callout>
+Watch this video guide demonstrating Tool Call Limit middleware behavior.
 
-<Accordion title="Configuration options">
-  <ParamField body="tool_name" type="string">
+Configuration options
+tool_name (string)
     Name of specific tool to limit. If not provided, limits apply to **all tools globally**.
-  </ParamField>
 
-  <ParamField body="thread_limit" type="number">
+thread_limit (number)
     Maximum tool calls across all runs in a thread (conversation). Persists across multiple invocations with the same thread ID. Requires a checkpointer to maintain state. `None` means no thread limit.
-  </ParamField>
 
-  <ParamField body="run_limit" type="number">
+run_limit (number)
     Maximum tool calls per single invocation (one user message → response cycle). Resets with each new user message. `None` means no run limit.
 
     **Note:** At least one of `thread_limit` or `run_limit` must be specified.
-  </ParamField>
 
-  <ParamField body="exit_behavior" type="string" default="continue">
+exit_behavior (string, continue)
     Behavior when limit is reached:
 
     * `'continue'` (default) - Block exceeded tool calls with error messages, let other tools and the model continue. The model decides when to end based on the error messages.
     * `'error'` - Raise a `ToolCallLimitExceededError` exception, stopping execution immediately
     * `'end'` - Stop execution immediately with a `ToolMessage` and AI message for the exceeded tool call. Only works when limiting a single tool; raises `NotImplementedError` if other tools have pending calls.
-  </ParamField>
-</Accordion>
 
-<Accordion title="Full example">
-  Specify limits with:
+Full example
+Specify limits with:
 
-  * **Thread limit** - Max calls across all runs in a conversation (requires checkpointer)
-  * **Run limit** - Max calls per single invocation (resets each turn)
+* **Thread limit** - Max calls across all runs in a conversation (requires checkpointer)
+* **Run limit** - Max calls per single invocation (resets each turn)
 
-  Exit behaviors:
+Exit behaviors:
 
-  * `'continue'` (default) - Block exceeded calls with error messages, agent continues
-  * `'error'` - Raise exception immediately
-  * `'end'` - Stop with ToolMessage + AI message (single-tool scenarios only)
+* `'continue'` (default) - Block exceeded calls with error messages, agent continues
+* `'error'` - Raise exception immediately
+* `'end'` - Stop with ToolMessage + AI message (single-tool scenarios only)
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   from langchain.agents import create_agent
   from langchain.agents.middleware import ToolCallLimitMiddleware
 
@@ -805,7 +737,6 @@ agent = create_agent(
       middleware=[global_limiter, search_limiter, database_limiter, strict_limiter],
   )
   ```
-</Accordion>
 
 ### PII detection
 
@@ -815,13 +746,11 @@ Detect and handle Personally Identifiable Information (PII) in conversations usi
 * Customer service agents that need to sanitize logs.
 * Any application handling sensitive user data.
 
-<Note>
-  With `apply_to_output=True`, `PIIMiddleware` also redacts streamed wire output—text deltas, tool-call args, tool outputs, and state snapshots—via a registered stream transformer. Requires `langchain>=1.3.2`. See [Register transformers on middleware](/oss/python/langchain/event-streaming#register-transformers-on-middleware).
-</Note>
+With `apply_to_output=True`, `PIIMiddleware` also redacts streamed wire output—text deltas, tool-call args, tool outputs, and state snapshots—via a registered stream transformer. Requires `langchain>=1.3.2`. See Register transformers on middleware.
 
-**API reference:** [`PIIMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/pii/PIIMiddleware)
+**API reference:** `PIIMiddleware`
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import PIIMiddleware
 
@@ -845,7 +774,7 @@ You can create custom PII types by providing a `detector` parameter. This allows
 
 2. **Custom function** - Complex detection logic with validation
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import re
 
 from langchain.agents import create_agent
@@ -915,7 +844,7 @@ The detector function must accept a string (content) and return matches:
 
 Returns a list of `PIIMatch` objects:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents.middleware import PIIMatch
 
 
@@ -931,45 +860,36 @@ def detector(content: str) -> list[PIIMatch]:
     ]
 ```
 
-<Tip>
-  For custom detectors:
+For custom detectors:
 
-  * Use regex strings for simple patterns
-  * Use RegExp objects when you need flags (e.g., case-insensitive matching)
-  * Use custom functions when you need validation logic beyond pattern matching
-  * Custom functions give you full control over detection logic and can implement complex validation rules
-</Tip>
+* Use regex strings for simple patterns
+* Use RegExp objects when you need flags (e.g., case-insensitive matching)
+* Use custom functions when you need validation logic beyond pattern matching
+* Custom functions give you full control over detection logic and can implement complex validation rules
 
-<Accordion title="Configuration options">
-  <ParamField body="pii_type" type="string" required>
+Configuration options
+pii_type (string, required)
     Type of PII to detect. Can be a built-in type (`email`, `credit_card`, `ip`, `mac_address`, `url`) or a custom type name.
-  </ParamField>
 
-  <ParamField body="strategy" type="string" default="redact">
+strategy (string, redact)
     How to handle detected PII. Options:
 
     * `'block'` - Raise exception when detected
     * `'redact'` - Replace with `[REDACTED_{PII_TYPE}]`
     * `'mask'` - Partially mask (e.g., `****-****-****-1234`)
     * `'hash'` - Replace with deterministic hash
-  </ParamField>
 
-  <ParamField body="detector" type="function | regex">
+detector (function | regex)
     Custom detector function or regex pattern. If not provided, uses built-in detector for the PII type.
-  </ParamField>
 
-  <ParamField body="apply_to_input" type="boolean" default="True">
+apply_to_input (boolean, True)
     Check user messages before model call
-  </ParamField>
 
-  <ParamField body="apply_to_output" type="boolean" default="False">
-    Check AI messages after model call. With `langchain>=1.3.2`, also redacts streamed wire output (text deltas, tool-call args, tool outputs, state snapshots) via a registered stream transformer. See [event streaming](/oss/python/langchain/event-streaming#register-transformers-on-middleware).
-  </ParamField>
+apply_to_output (boolean, False)
+    Check AI messages after model call. With `langchain>=1.3.2`, also redacts streamed wire output (text deltas, tool-call args, tool outputs, state snapshots) via a registered stream transformer. See event streaming.
 
-  <ParamField body="apply_to_tool_results" type="boolean" default="False">
+apply_to_tool_results (boolean, False)
     Check tool result messages after execution
-  </ParamField>
-</Accordion>
 
 ### To-do list
 
@@ -978,13 +898,11 @@ Equip agents with task planning and tracking capabilities for complex multi-step
 * Complex multi-step tasks requiring coordination across multiple tools.
 * Long-running operations where progress visibility is important.
 
-<Note>
-  This middleware automatically provides agents with a `write_todos` tool and system prompts to guide effective task planning.
-</Note>
+This middleware automatically provides agents with a `write_todos` tool and system prompts to guide effective task planning.
 
-**API reference:** [`TodoListMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/todo/TodoListMiddleware)
+**API reference:** `TodoListMiddleware`
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import TodoListMiddleware
 
@@ -995,19 +913,14 @@ agent = create_agent(
 )
 ```
 
-<Callout icon="player-play" iconType="solid">
-  Watch this [video guide](https://www.youtube.com/watch?v=yTWocbVKQxw) demonstrating To-do List middleware behavior.
-</Callout>
+Watch this video guide demonstrating To-do List middleware behavior.
 
-<Accordion title="Configuration options">
-  <ParamField body="system_prompt" type="string">
+Configuration options
+system_prompt (string)
     Custom system prompt for guiding todo usage. Uses built-in prompt if not specified.
-  </ParamField>
 
-  <ParamField body="tool_description" type="string">
+tool_description (string)
     Custom description for the `write_todos` tool. Uses built-in description if not specified.
-  </ParamField>
-</Accordion>
 
 ### LLM tool selector
 
@@ -1019,9 +932,9 @@ Use an LLM to intelligently select relevant tools before calling the main model.
 
 This middleware uses structured output to ask an LLM which tools are most relevant for the current query. The structured output schema defines the available tool names and descriptions. Model providers often add this structured output information to the system prompt behind the scenes.
 
-**API reference:** [`LLMToolSelectorMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/tool_selection/LLMToolSelectorMiddleware)
+**API reference:** `LLMToolSelectorMiddleware`
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import LLMToolSelectorMiddleware
 
@@ -1038,25 +951,20 @@ agent = create_agent(
 )
 ```
 
-<Accordion title="Configuration options">
-  <ParamField body="model" type="string | BaseChatModel">
-    Model for tool selection. Can be a model identifier string (e.g., `'openai:gpt-5.4-mini'`) or a `BaseChatModel` instance. See [`init_chat_model`](https://reference.langchain.com/python/langchain/chat_models/base/init_chat_model) for more information.
+Configuration options
+model (string | BaseChatModel)
+    Model for tool selection. Can be a model identifier string (e.g., `'openai:gpt-5.4-mini'`) or a `BaseChatModel` instance. See `init_chat_model` for more information.
 
     Defaults to the agent's main model.
-  </ParamField>
 
-  <ParamField body="system_prompt" type="string">
+system_prompt (string)
     Instructions for the selection model. Uses built-in prompt if not specified.
-  </ParamField>
 
-  <ParamField body="max_tools" type="number">
+max_tools (number)
     Maximum number of tools to select. If the model selects more, only the first max\_tools will be used. No limit if not specified.
-  </ParamField>
 
-  <ParamField body="always_include" type="list[string]">
+always_include (list[string])
     Tool names to always include regardless of selection. These do not count against the max\_tools limit.
-  </ParamField>
-</Accordion>
 
 ### Provider tool search
 
@@ -1065,13 +973,11 @@ Defer selected tools behind model providers' server-side tool search, so the mod
 * Reducing context bloat when using many tools.
 * Improving tool selection accuracy by surfacing only relevant tools.
 
-<Note>
-  Requires a model with server-side tool search support: Anthropic (Claude Sonnet 4+/Opus 4+/Haiku 4.5+) or OpenAI (gpt-5.5+). Other providers raise a `ValueError`.
-</Note>
+Requires a model with server-side tool search support: Anthropic (Claude Sonnet 4+/Opus 4+/Haiku 4.5+) or OpenAI (gpt-5.5+). Other providers raise a `ValueError`.
 
-**API reference:** [`ProviderToolSearchMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/provider_tool_search/ProviderToolSearchMiddleware)
+**API reference:** `ProviderToolSearchMiddleware`
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import ProviderToolSearchMiddleware
 
@@ -1084,16 +990,14 @@ agent = create_agent(
 )
 ```
 
-<Accordion title="Configuration options">
-  <ParamField body="searchable_tools" type="list[str | BaseTool]">
+Configuration options
+searchable_tools (list[str | BaseTool])
     Tools to defer behind the provider's tool search, given by name or instance. Deferred tools are withheld from the model until its search surfaces them. Tools constructed with `extras={"defer_loading": True}` are deferred regardless of this option; if `searchable_tools` is omitted, only those pre-marked tools are deferred.
-  </ParamField>
-</Accordion>
 
-<Accordion title="Full example">
-  The middleware opts-in all tools included in `searchable_tools` for deferral and search. A tool can also opt into deferral at construction time by setting `extras={"defer_loading": True}`.
+Full example
+The middleware opts-in all tools included in `searchable_tools` for deferral and search. A tool can also opt into deferral at construction time by setting `extras={"defer_loading": True}`.
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   from langchain.agents import create_agent
   from langchain.agents.middleware import ProviderToolSearchMiddleware
   from langchain.tools import tool
@@ -1113,7 +1017,6 @@ agent = create_agent(
       middleware=[ProviderToolSearchMiddleware()],
   )
   ```
-</Accordion>
 
 ### Shell tool
 
@@ -1124,17 +1027,13 @@ Expose a persistent shell session to agents for command execution. Shell tool mi
 * Testing and validation workflows
 * File system operations and script execution
 
-<Warning>
-  **Security consideration**: Use appropriate execution policies (`HostExecutionPolicy`, `DockerExecutionPolicy`, or `CodexSandboxExecutionPolicy`) to match your deployment's security requirements.
-</Warning>
+**Security consideration**: Use appropriate execution policies (`HostExecutionPolicy`, `DockerExecutionPolicy`, or `CodexSandboxExecutionPolicy`) to match your deployment's security requirements.
 
-<Note>
-  **Limitation**: Persistent shell sessions do not currently work with interrupts (human-in-the-loop). We anticipate adding support for this in the future.
-</Note>
+**Limitation**: Persistent shell sessions do not currently work with interrupts (human-in-the-loop). We anticipate adding support for this in the future.
 
-**API reference:** [`ShellToolMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/shell_tool/ShellToolMiddleware)
+**API reference:** `ShellToolMiddleware`
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import (
     ShellToolMiddleware,
@@ -1153,58 +1052,47 @@ agent = create_agent(
 )
 ```
 
-<Accordion title="Configuration options">
-  <ParamField body="workspace_root" type="str | Path | None">
+Configuration options
+workspace_root (str | Path | None)
     Base directory for the shell session. If omitted, a temporary directory is created when the agent starts and removed when it ends.
-  </ParamField>
 
-  <ParamField body="startup_commands" type="tuple[str, ...] | list[str] | str | None">
+startup_commands (tuple[str, ...] | list[str] | str | None)
     Optional commands executed sequentially after the session starts
-  </ParamField>
 
-  <ParamField body="shutdown_commands" type="tuple[str, ...] | list[str] | str | None">
+shutdown_commands (tuple[str, ...] | list[str] | str | None)
     Optional commands executed before the session shuts down
-  </ParamField>
 
-  <ParamField body="execution_policy" type="BaseExecutionPolicy | None">
+execution_policy (BaseExecutionPolicy | None)
     Execution policy controlling timeouts, output limits, and resource configuration. Options:
 
     * `HostExecutionPolicy` - Full host access (default); best for trusted environments where the agent already runs inside a container or VM
     * `DockerExecutionPolicy` - Launches a separate Docker container for each agent run, providing harder isolation
     * `CodexSandboxExecutionPolicy` - Reuses the Codex CLI sandbox for additional syscall/filesystem restrictions
-  </ParamField>
 
-  <ParamField body="redaction_rules" type="tuple[RedactionRule, ...] | list[RedactionRule] | None">
+redaction_rules (tuple[RedactionRule, ...] | list[RedactionRule] | None)
     Optional redaction rules to sanitize command output before returning it to the model.
 
-    <Warning>
       Redaction rules are applied post execution and do not prevent exfiltration of secrets or sensitive data when using `HostExecutionPolicy`.
-    </Warning>
-  </ParamField>
 
-  <ParamField body="tool_description" type="str | None">
+tool_description (str | None)
     Optional override for the registered shell tool description
-  </ParamField>
 
-  <ParamField body="shell_command" type="Sequence[str] | str | None">
+shell_command (Sequence[str] | str | None)
     Optional shell executable (string) or argument sequence used to launch the persistent session. Defaults to `/bin/bash`.
-  </ParamField>
 
-  <ParamField body="env" type="Mapping[str, Any] | None">
+env (Mapping[str, Any] | None)
     Optional environment variables to supply to the shell session. Values are coerced to strings before command execution.
-  </ParamField>
-</Accordion>
 
-<Accordion title="Full example">
-  The middleware provides a single persistent shell session that agents can use to execute commands sequentially.
+Full example
+The middleware provides a single persistent shell session that agents can use to execute commands sequentially.
 
-  **Execution policies:**
+**Execution policies:**
 
-  * `HostExecutionPolicy` (default) - Native execution with full host access
-  * `DockerExecutionPolicy` - Isolated Docker container execution
-  * `CodexSandboxExecutionPolicy` - Sandboxed execution via Codex CLI
+* `HostExecutionPolicy` (default) - Native execution with full host access
+* `DockerExecutionPolicy` - Isolated Docker container execution
+* `CodexSandboxExecutionPolicy` - Sandboxed execution via Codex CLI
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   from langchain.agents import create_agent
   from langchain.agents.middleware import (
       ShellToolMiddleware,
@@ -1256,20 +1144,19 @@ agent = create_agent(
       ],
   )
   ```
-</Accordion>
 
 ### Filesystem middleware
 
 Context engineering is a main challenge in building effective agents. This is particularly difficult when using tools that return variable-length results (for example, `web_search` and RAG), as long tool results can quickly fill your context window.
 
-`FilesystemMiddleware` from [Deep Agents](/oss/python/deepagents/overview) provides four tools for interacting with both short-term and long-term memory:
+`FilesystemMiddleware` from Deep Agents provides four tools for interacting with both short-term and long-term memory:
 
 * `ls`: List the files in the filesystem
 * `read_file`: Read an entire file or a certain number of lines from a file
 * `write_file`: Write a new file to the filesystem
 * `edit_file`: Edit an existing file in the filesystem
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from deepagents.middleware.filesystem import FilesystemMiddleware
 
@@ -1295,7 +1182,7 @@ agent = create_agent(
 
 By default, these tools write to a local "filesystem" in your graph state. To enable persistent storage across threads, configure a `CompositeBackend` that routes specific paths (like `/memories/`) to a `StoreBackend`.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from deepagents.middleware import FilesystemMiddleware
 from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
@@ -1327,9 +1214,9 @@ When you configure a `CompositeBackend` with a `StoreBackend` for `/memories/`, 
 
 Handing off tasks to subagents isolates context, keeping the main (supervisor) agent's context window clean while still going deep on a task.
 
-The subagents middleware from [Deep Agents](/oss/python/deepagents/overview) allows you to supply subagents through a `task` tool.
+The subagents middleware from Deep Agents allows you to supply subagents through a `task` tool.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.tools import tool
 from langchain.agents import create_agent
 from deepagents.middleware.subagents import SubAgentMiddleware
@@ -1365,7 +1252,7 @@ A subagent is defined with a **name**, **description**, **system prompt**, and *
 
 For more complex use cases, you can also provide your own prebuilt LangGraph graph as a subagent.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from deepagents.middleware.subagents import SubAgentMiddleware
 from deepagents import CompiledSubAgent
@@ -1402,16 +1289,13 @@ In addition to any user-defined subagents, the main agent has access to a `gener
 
 ### Rubric grading
 
-<Note>
-  `RubricMiddleware` requires `deepagents>=0.6.5`. It is in [**beta**](/oss/python/versioning); the API may change in the future.
-</Note>
+`RubricMiddleware` requires `deepagents>=0.6.5`. It is in **beta**; the API may change in the future.
 
 Some tasks have a clear definition of "done" that an agent cannot reliably hit on the first try. `RubricMiddleware` lets you declare *what done looks like* as a rubric and have the agent self-evaluate and iterate until the rubric is satisfied or a maximum iteration cap is hit.
 
-**API reference:** [`RubricMiddleware`](https://reference.langchain.com/python/deepagents/middleware/rubric/RubricMiddleware)
+**API reference:** `RubricMiddleware`
 
-<CodeGroup>
-  ```python Google theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Google
   from deepagents import RubricMiddleware, create_deep_agent
   from langgraph.checkpoint.memory import InMemorySaver
 
@@ -1427,7 +1311,7 @@ Some tasks have a clear definition of "done" that an agent cannot reliably hit o
   )
   ```
 
-  ```python OpenAI theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python OpenAI
   from deepagents import RubricMiddleware, create_deep_agent
   from langgraph.checkpoint.memory import InMemorySaver
 
@@ -1443,7 +1327,7 @@ Some tasks have a clear definition of "done" that an agent cannot reliably hit o
   )
   ```
 
-  ```python Anthropic theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Anthropic
   from deepagents import RubricMiddleware, create_deep_agent
   from langgraph.checkpoint.memory import InMemorySaver
 
@@ -1459,7 +1343,7 @@ Some tasks have a clear definition of "done" that an agent cannot reliably hit o
   )
   ```
 
-  ```python OpenRouter theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python OpenRouter
   from deepagents import RubricMiddleware, create_deep_agent
   from langgraph.checkpoint.memory import InMemorySaver
 
@@ -1475,7 +1359,7 @@ Some tasks have a clear definition of "done" that an agent cannot reliably hit o
   )
   ```
 
-  ```python Fireworks theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Fireworks
   from deepagents import RubricMiddleware, create_deep_agent
   from langgraph.checkpoint.memory import InMemorySaver
 
@@ -1491,7 +1375,7 @@ Some tasks have a clear definition of "done" that an agent cannot reliably hit o
   )
   ```
 
-  ```python Baseten theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Baseten
   from deepagents import RubricMiddleware, create_deep_agent
   from langgraph.checkpoint.memory import InMemorySaver
 
@@ -1507,7 +1391,7 @@ Some tasks have a clear definition of "done" that an agent cannot reliably hit o
   )
   ```
 
-  ```python Ollama theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Ollama
   from deepagents import RubricMiddleware, create_deep_agent
   from langgraph.checkpoint.memory import InMemorySaver
 
@@ -1522,9 +1406,8 @@ Some tasks have a clear definition of "done" that an agent cannot reliably hit o
       checkpointer=InMemorySaver(),
   )
   ```
-</CodeGroup>
 
-For full configuration options, streaming events, and a complete code generation example, see [Grading rubrics](/oss/python/deepagents/rubric).
+For full configuration options, streaming events, and a complete code generation example, see Grading rubrics.
 
 ### File search
 
@@ -1535,9 +1418,9 @@ Provide Glob and Grep search tools over a filesystem. File search middleware is 
 * Searching code content with regex
 * Large codebases where file discovery is needed
 
-**API reference:** [`FilesystemFileSearchMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/file_search/FilesystemFileSearchMiddleware)
+**API reference:** `FilesystemFileSearchMiddleware`
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import FilesystemFileSearchMiddleware
 
@@ -1553,35 +1436,31 @@ agent = create_agent(
 )
 ```
 
-<Accordion title="Configuration options">
-  <ParamField body="root_path" type="str" required>
+Configuration options
+root_path (str, required)
     Root directory to search. All file operations are relative to this path.
-  </ParamField>
 
-  <ParamField body="use_ripgrep" type="bool" default="True">
+use_ripgrep (bool, True)
     Whether to use ripgrep for search. Falls back to Python regex if ripgrep is unavailable.
-  </ParamField>
 
-  <ParamField body="max_file_size_mb" type="int" default="10">
+max_file_size_mb (int, 10)
     Maximum file size to search in MB. Files larger than this are skipped.
-  </ParamField>
-</Accordion>
 
-<Accordion title="Full example">
-  The middleware adds two search tools to agents:
+Full example
+The middleware adds two search tools to agents:
 
-  **Glob tool** - Fast file pattern matching:
+**Glob tool** - Fast file pattern matching:
 
-  * Supports patterns like `**/*.py`, `src/**/*.ts`
-  * Returns matching file paths sorted by modification time
+* Supports patterns like `**/*.py`, `src/**/*.ts`
+* Returns matching file paths sorted by modification time
 
-  **Grep tool** - Content search with regex:
+**Grep tool** - Content search with regex:
 
-  * Full regex syntax support
-  * Filter by file patterns with `include` parameter
-  * Three output modes: `files_with_matches`, `content`, `count`
+* Full regex syntax support
+* Filter by file patterns with `include` parameter
+* Three output modes: `files_with_matches`, `content`, `count`
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   from langchain.agents import create_agent
   from langchain.agents.middleware import FilesystemFileSearchMiddleware
   from langchain.messages import HumanMessage
@@ -1608,7 +1487,6 @@ agent = create_agent(
   # 1. glob_search(pattern="**/*.py") to find Python files
   # 2. grep_search(pattern="async def", include="*.py") to find async functions
   ```
-</Accordion>
 
 ### Context editing
 
@@ -1618,9 +1496,9 @@ Manage conversation context by clearing older tool call outputs when token limit
 * Reducing token costs by removing older tool outputs that are no longer relevant
 * Maintaining only the most recent N tool results in context
 
-**API reference:** [`ContextEditingMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/context_editing/ContextEditingMiddleware), [`ClearToolUsesEdit`](https://reference.langchain.com/python/langchain/agents/middleware/context_editing/ClearToolUsesEdit)
+**API reference:** `ContextEditingMiddleware`, `ClearToolUsesEdit`
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import ContextEditingMiddleware, ClearToolUsesEdit
 
@@ -1640,53 +1518,44 @@ agent = create_agent(
 )
 ```
 
-<Accordion title="Configuration options">
-  <ParamField body="edits" type="list[ContextEdit]" default="[ClearToolUsesEdit()]">
-    List of [`ContextEdit`](https://reference.langchain.com/python/langchain/agents/middleware/context_editing/ContextEdit) strategies to apply
-  </ParamField>
+Configuration options
+edits (list[ContextEdit], [ClearToolUsesEdit()])
+    List of `ContextEdit` strategies to apply
 
-  <ParamField body="token_count_method" type="string" default="approximate">
+token_count_method (string, approximate)
     Token counting method. Options: `'approximate'` or `'model'`
-  </ParamField>
 
-  **[`ClearToolUsesEdit`](https://reference.langchain.com/python/langchain/agents/middleware/context_editing/ClearToolUsesEdit) options:**
+**`ClearToolUsesEdit` options:**
 
-  <ParamField body="trigger" type="number" default="100000">
+trigger (number, 100000)
     Token count that triggers the edit. When the conversation exceeds this token count, older tool outputs will be cleared.
-  </ParamField>
 
-  <ParamField body="clear_at_least" type="number" default="0">
+clear_at_least (number, 0)
     Minimum number of tokens to reclaim when the edit runs. If set to 0, clears as much as needed.
-  </ParamField>
 
-  <ParamField body="keep" type="number" default="3">
+keep (number, 3)
     Number of most recent tool results that must be preserved. These will never be cleared.
-  </ParamField>
 
-  <ParamField body="clear_tool_inputs" type="boolean" default="False">
+clear_tool_inputs (boolean, False)
     Whether to clear the originating tool call parameters on the AI message. When `True`, tool call arguments are replaced with empty objects.
-  </ParamField>
 
-  <ParamField body="exclude_tools" type="list[string]" default="()">
+exclude_tools (list[string], ())
     List of tool names to exclude from clearing. These tools will never have their outputs cleared.
-  </ParamField>
 
-  <ParamField body="placeholder" type="string" default="[cleared]">
+placeholder (string, [cleared])
     Placeholder text inserted for cleared tool outputs. This replaces the original tool message content.
-  </ParamField>
-</Accordion>
 
-<Accordion title="Full example">
-  The middleware applies context editing strategies when token limits are reached. The most common strategy is `ClearToolUsesEdit`, which clears older tool results while preserving recent ones.
+Full example
+The middleware applies context editing strategies when token limits are reached. The most common strategy is `ClearToolUsesEdit`, which clears older tool results while preserving recent ones.
 
-  **How it works:**
+**How it works:**
 
-  1. Monitor token count in conversation
-  2. When threshold is reached, clear older tool outputs
-  3. Keep most recent N tool results
-  4. Optionally preserve tool call arguments for context
+1. Monitor token count in conversation
+2. When threshold is reached, clear older tool outputs
+3. Keep most recent N tool results
+4. Optionally preserve tool call arguments for context
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   from langchain.agents import create_agent
   from langchain.agents.middleware import ContextEditingMiddleware, ClearToolUsesEdit
 
@@ -1709,7 +1578,6 @@ agent = create_agent(
       ],
   )
   ```
-</Accordion>
 
 ### LLM tool emulator
 
@@ -1719,9 +1587,9 @@ Emulate tool execution using an LLM for testing purposes, replacing actual tool 
 * Developing agents when external tools are unavailable or expensive.
 * Prototyping agent workflows before implementing actual tools.
 
-**API reference:** [`LLMToolEmulator`](https://reference.langchain.com/python/langchain/agents/middleware/tool_emulator/LLMToolEmulator)
+**API reference:** `LLMToolEmulator`
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import LLMToolEmulator
 
@@ -1734,20 +1602,17 @@ agent = create_agent(
 )
 ```
 
-<Accordion title="Configuration options">
-  <ParamField body="tools" type="list[str | BaseTool]">
+Configuration options
+tools (list[str | BaseTool])
     List of tool names (str) or BaseTool instances to emulate. If `None` (default), ALL tools will be emulated. If empty list `[]`, no tools will be emulated. If array with tool names/instances, only those tools will be emulated.
-  </ParamField>
 
-  <ParamField body="model" type="string | BaseChatModel">
-    Model to use for generating emulated tool responses. Can be a model identifier string (e.g., `'google_genai:gemini-3.6-flash'`) or a `BaseChatModel` instance. Defaults to the agent's model if not specified. See [`init_chat_model`](https://reference.langchain.com/python/langchain/chat_models/base/init_chat_model) for more information.
-  </ParamField>
-</Accordion>
+model (string | BaseChatModel)
+    Model to use for generating emulated tool responses. Can be a model identifier string (e.g., `'google_genai:gemini-3.6-flash'`) or a `BaseChatModel` instance. Defaults to the agent's model if not specified. See `init_chat_model` for more information.
 
-<Accordion title="Full example">
-  The middleware uses an LLM to generate plausible responses for tool calls instead of executing the actual tools.
+Full example
+The middleware uses an LLM to generate plausible responses for tool calls instead of executing the actual tools.
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   from langchain.agents import create_agent
   from langchain.agents.middleware import LLMToolEmulator
   from langchain.tools import tool
@@ -1785,24 +1650,18 @@ agent = create_agent(
       middleware=[LLMToolEmulator(model="claude-sonnet-4-6")],
   )
   ```
-</Accordion>
 
 ## Provider-specific middleware
 
 These middleware are optimized for specific LLM providers. See each provider's documentation for full details and examples.
 
-<Columns cols={2}>
-  <Card title="Anthropic" href="/oss/python/integrations/middleware/anthropic" icon="https://mintcdn.com/langchain-5e9cc07a/y4fKEo7ANyWBQMjp/images/providers/anthropic-icon.svg?fit=max&auto=format&n=y4fKEo7ANyWBQMjp&q=85&s=9212db764598a2d3f02f471b5436ae9e" arrow width="65" height="65" data-path="images/providers/anthropic-icon.svg">
+Anthropic
     Prompt caching, bash tool, text editor, memory, and file search middleware for Claude models.
-  </Card>
 
-  <Card title="AWS" href="/oss/python/integrations/middleware/aws" icon="brand-aws" arrow>
+AWS
     Prompt caching middleware for Amazon Bedrock models.
-  </Card>
 
-  <Card title="OpenAI" href="/oss/python/integrations/middleware/openai" icon="brand-openai" arrow>
+OpenAI
     Content moderation middleware for OpenAI models.
-  </Card>
-</Columns>
 
 ***

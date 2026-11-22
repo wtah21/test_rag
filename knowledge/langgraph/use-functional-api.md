@@ -7,17 +7,15 @@ url: https://docs.langchain.com/oss/python/langgraph/use-functional-api
 
 # Use the functional API
 
-The [**Functional API**](/oss/python/langgraph/functional-api) allows you to add LangGraph's key features ([persistence](/oss/python/langgraph/persistence), [memory](/oss/python/langgraph/add-memory), [human-in-the-loop](/oss/python/langgraph/interrupts), and [streaming](/oss/python/langgraph/streaming)) to your applications with minimal changes to your existing code.
+The **Functional API** allows you to add LangGraph's key features (persistence, memory, human-in-the-loop, and streaming) to your applications with minimal changes to your existing code.
 
-<Tip>
-  For conceptual information on the functional API, see [Functional API](/oss/python/langgraph/functional-api).
-</Tip>
+For conceptual information on the functional API, see Functional API.
 
 ## Creating a simple workflow
 
 When defining an `entrypoint`, input is restricted to the first argument of the function. To pass multiple inputs, you can use a dictionary.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 @entrypoint(checkpointer=checkpointer)
 def my_workflow(inputs: dict) -> int:
     value = inputs["value"]
@@ -27,8 +25,8 @@ def my_workflow(inputs: dict) -> int:
 my_workflow.invoke({"value": 1, "another_value": 2})
 ```
 
-<Accordion title="Extended example: simple workflow">
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Extended example: simple workflow
+  ```python
   from langchain_core.utils.uuid import uuid7
   from langgraph.func import entrypoint, task
   from langgraph.checkpoint.memory import InMemorySaver
@@ -57,14 +55,13 @@ my_workflow.invoke({"value": 1, "another_value": 2})
   result = workflow.invoke({"number": 7}, config=config)
   print(result)
   ```
-</Accordion>
 
-<Accordion title="Extended example: Compose an essay with an LLM">
-  This example demonstrates how to use the `@task` and `@entrypoint` decorators
-  syntactically. Given that a checkpointer is provided, the workflow results will
-  be persisted in the checkpointer.
+Extended example: Compose an essay with an LLM
+This example demonstrates how to use the `@task` and `@entrypoint` decorators
+syntactically. Given that a checkpointer is provided, the workflow results will
+be persisted in the checkpointer.
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   import uuid
   from langchain.chat_models import init_chat_model
   from langgraph.func import entrypoint, task
@@ -94,13 +91,12 @@ my_workflow.invoke({"value": 1, "another_value": 2})
   result = workflow.invoke("the history of flight", config=config)
   print(result)
   ```
-</Accordion>
 
 ## Parallel execution
 
 Tasks can be executed in parallel by invoking them concurrently and waiting for the results. This is useful for improving performance in IO bound tasks (e.g., calling APIs for LLMs).
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 @task
 def add_one(number: int) -> int:
     return number + 1
@@ -111,10 +107,10 @@ def graph(numbers: list[int]) -> list[str]:
     return [f.result() for f in futures]
 ```
 
-<Accordion title="Extended example: parallel LLM calls">
-  This example demonstrates how to run multiple LLM calls in parallel using `@task`. Each call generates a paragraph on a different topic, and results are joined into a single text output.
+Extended example: parallel LLM calls
+This example demonstrates how to run multiple LLM calls in parallel using `@task`. Each call generates a paragraph on a different topic, and results are joined into a single text output.
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   import uuid
   from langchain.chat_models import init_chat_model
   from langgraph.func import entrypoint, task
@@ -148,14 +144,13 @@ def graph(numbers: list[int]) -> list[str]:
   print(result)
   ```
 
-  This example uses LangGraph's concurrency model to improve execution time, especially when tasks involve I/O like LLM completions.
-</Accordion>
+This example uses LangGraph's concurrency model to improve execution time, especially when tasks involve I/O like LLM completions.
 
 ## Calling graphs
 
-The **Functional API** and the [**Graph API**](/oss/python/langgraph/graph-api) can be used together in the same application as they share the same underlying runtime.
+The **Functional API** and the **Graph API** can be used together in the same application as they share the same underlying runtime.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.func import entrypoint
 from langgraph.graph import StateGraph
 
@@ -175,8 +170,8 @@ def some_workflow(some_input: dict) -> int:
     }
 ```
 
-<Accordion title="Extended example: calling a simple graph from the functional API">
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Extended example: calling a simple graph from the functional API
+  ```python
   import uuid
   from typing import TypedDict
   from langgraph.func import entrypoint
@@ -209,13 +204,12 @@ def some_workflow(some_input: dict) -> int:
   config = {"configurable": {"thread_id": str(uuid7())}}
   print(workflow.invoke(5, config=config))  # Output: {'bar': 10}
   ```
-</Accordion>
 
 ## Call other entrypoints
 
 You can call other **entrypoints** from within an **entrypoint** or a **task**.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 @entrypoint() # Will automatically use the checkpointer from the parent entrypoint
 def some_other_workflow(inputs: dict) -> int:
     return inputs["value"]
@@ -226,8 +220,8 @@ def my_workflow(inputs: dict) -> int:
     return value
 ```
 
-<Accordion title="Extended example: calling another entrypoint">
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Extended example: calling another entrypoint
+  ```python
   import uuid
   from langgraph.func import entrypoint
   from langgraph.checkpoint.memory import InMemorySaver
@@ -250,16 +244,15 @@ def my_workflow(inputs: dict) -> int:
   config = {"configurable": {"thread_id": str(uuid7())}}
   print(main.invoke({"x": 6, "y": 7}, config=config))  # Output: {'product': 42}
   ```
-</Accordion>
 
 ## Streaming
 
 The **Functional API** uses the same streaming mechanism as the **Graph API**. Please
-read the [**streaming guide**](/oss/python/langgraph/streaming) section for more details.
+read the **streaming guide** section for more details.
 
 Example of using the streaming API to stream value chunks from a workflow run.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 config = {"configurable": {"thread_id": str(uuid7())}}
 
 stream = main.stream_events({"x": 5}, config=config, version="v3")
@@ -268,30 +261,28 @@ for mode, chunk in stream.interleave("values"):
 # values: 10
 ```
 
-1. Import [`get_stream_writer`](https://reference.langchain.com/python/langgraph/config/get_stream_writer) from `langgraph.config`.
+1. Import `get_stream_writer` from `langgraph.config`.
 2. Obtain a stream writer instance within the entrypoint.
 3. Emit custom data before computation begins.
 4. Emit another custom message after computing the result.
 5. Use `stream_events()` to process streamed output.
 6. Iterate over `(mode, chunk)` pairs from `interleave("values")`.
 
-<Warning>
-  **Async with Python \< 3.11**
-  If using Python \< 3.11 and writing async code, using [`get_stream_writer`](https://reference.langchain.com/python/langgraph/config/get_stream_writer) will not work. Instead please
-  use the `StreamWriter` class directly. See [Async with Python \< 3.11](/oss/python/langgraph/streaming#async) for more details.
+**Async with Python \< 3.11**
+If using Python \< 3.11 and writing async code, using `get_stream_writer` will not work. Instead please
+use the `StreamWriter` class directly. See Async with Python \< 3.11 for more details.
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   from langgraph.types import StreamWriter
 
   @entrypoint(checkpointer=checkpointer)
-  async def main(inputs: dict, writer: StreamWriter) -> int:  # [!code highlight]
+  async def main(inputs: dict, writer: StreamWriter) -> int:
   ...
   ```
-</Warning>
 
 ## Retry policy
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.func import entrypoint, task
 from langgraph.types import RetryPolicy
@@ -328,7 +319,7 @@ config = {
 main.invoke({'any_input': 'foobar'}, config=config)
 ```
 
-```pycon theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```pycon
 'OK'
 ```
 
@@ -336,7 +327,7 @@ main.invoke({'any_input': 'foobar'}, config=config)
 
 Use the `timeout` parameter with `@task` or `@entrypoint` to limit how long a single async attempt can run. Provide the timeout in seconds or as a `datetime.timedelta`.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import asyncio
 
 from langgraph.errors import NodeTimeoutError
@@ -370,14 +361,14 @@ When a task or entrypoint exceeds its timeout, LangGraph raises `NodeTimeoutErro
 
 ## Caching tasks
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import time
 from langgraph.cache.memory import InMemoryCache
 from langgraph.func import entrypoint, task
 from langgraph.types import CachePolicy
 
 
-@task(cache_policy=CachePolicy(ttl=120))    # [!code highlight]
+@task(cache_policy=CachePolicy(ttl=120))
 def slow_add(x: int) -> int:
     time.sleep(1)
     return x * 2
@@ -399,7 +390,7 @@ for snapshot in stream.values:
 
 ## Resuming after an error
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import time
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.func import entrypoint, task
@@ -466,27 +457,27 @@ except ValueError:
 
 When we resume execution, we won't need to re-run the `slow_task` as its result is already saved in the checkpoint.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 main.invoke(None, config=config)
 ```
 
-```pycon theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```pycon
 'Ran slow task.'
 ```
 
 ## Human-in-the-loop
 
-The functional API supports [human-in-the-loop](/oss/python/langgraph/interrupts) workflows using the [`interrupt`](https://reference.langchain.com/python/langgraph/types/interrupt) function and the `Command` primitive.
+The functional API supports human-in-the-loop workflows using the `interrupt` function and the `Command` primitive.
 
 ### Basic human-in-the-loop workflow
 
-We will create three [tasks](/oss/python/langgraph/functional-api#task):
+We will create three tasks:
 
 1. Append `"bar"`.
 2. Pause for human input. When resuming, append human input.
 3. Append `"qux"`.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.func import entrypoint, task
 from langgraph.types import Command, interrupt
 
@@ -510,9 +501,9 @@ def step_3(input_query):
     return f"{input_query} qux"
 ```
 
-We can now compose these tasks in an [entrypoint](/oss/python/langgraph/functional-api#entrypoint):
+We can now compose these tasks in an entrypoint:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.checkpoint.memory import InMemorySaver
 
 checkpointer = InMemorySaver()
@@ -527,11 +518,11 @@ def graph(input_query):
     return result_3
 ```
 
-[interrupt()](/oss/python/langgraph/interrupts#pause-using-interrupt) is called inside a task, enabling a human to review and edit the output of the previous task. The results of prior tasks-- in this case `step_1`-- are persisted, so that they are not run again following the [`interrupt`](https://reference.langchain.com/python/langgraph/types/interrupt).
+interrupt() is called inside a task, enabling a human to review and edit the output of the previous task. The results of prior tasks-- in this case `step_1`-- are persisted, so that they are not run again following the `interrupt`.
 
 Let's send in a query string:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 config = {"configurable": {"thread_id": "1"}}
 
 stream = graph.stream_events("foo", config, version="v3")
@@ -540,9 +531,9 @@ for message in stream.messages:
         print(token, end="", flush=True)
 ```
 
-Note that we've paused with an [`interrupt`](https://reference.langchain.com/python/langgraph/types/interrupt) after `step_1`. The interrupt provides instructions to resume the run. To resume, we issue a [`Command`](/oss/python/langgraph/interrupts#resuming-interrupts) containing the data expected by the `human_feedback` task.
+Note that we've paused with an `interrupt` after `step_1`. The interrupt provides instructions to resume the run. To resume, we issue a `Command` containing the data expected by the `human_feedback` task.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 # Continue execution
 stream = graph.stream_events(Command(resume="baz"), config, version="v3")
 for message in stream.messages:
@@ -554,15 +545,15 @@ After resuming, the run proceeds through the remaining step and terminates as ex
 
 ### Review tool calls
 
-To review tool calls before execution, we add a `review_tool_call` function that calls [`interrupt`](/oss/python/langgraph/interrupts#pause-using-interrupt). When this function is called, execution will be paused until we issue a command to resume it.
+To review tool calls before execution, we add a `review_tool_call` function that calls `interrupt`. When this function is called, execution will be paused until we issue a command to resume it.
 
-Given a tool call, our function will [`interrupt`](https://reference.langchain.com/python/langgraph/types/interrupt) for human review. At that point we can either:
+Given a tool call, our function will `interrupt` for human review. At that point we can either:
 
 * Accept the tool call
 * Revise the tool call and continue
 * Generate a custom tool message (e.g., instructing the model to re-format its tool call)
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from typing import Union
 
 def review_tool_call(tool_call: ToolCall) -> Union[ToolCall, ToolMessage]:
@@ -586,9 +577,9 @@ def review_tool_call(tool_call: ToolCall) -> Union[ToolCall, ToolMessage]:
         )
 ```
 
-We can now update our [entrypoint](/oss/python/langgraph/functional-api#entrypoint) to review the generated tool calls. If a tool call is accepted or revised, we execute in the same way as before. Otherwise, we just append the [`ToolMessage`](https://reference.langchain.com/python/langchain-core/messages/tool/ToolMessage) supplied by the human. The results of prior tasks—in this case the initial model call—are persisted, so that they are not run again following the [`interrupt`](https://reference.langchain.com/python/langgraph/types/interrupt).
+We can now update our entrypoint to review the generated tool calls. If a tool call is accepted or revised, we execute in the same way as before. Otherwise, we just append the `ToolMessage` supplied by the human. The results of prior tasks—in this case the initial model call—are persisted, so that they are not run again following the `interrupt`.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph.message import add_messages
 from langgraph.types import Command, interrupt
@@ -639,27 +630,25 @@ def agent(messages, previous):
 
 ## Short-term memory
 
-Short-term memory allows storing information across different **invocations** of the same **thread id**. See [short-term memory](/oss/python/langgraph/functional-api#short-term-memory) for more details.
+Short-term memory allows storing information across different **invocations** of the same **thread id**. See short-term memory for more details.
 
 ### Manage checkpoints
 
 You can view and delete the information stored by the checkpointer.
 
-<a id="checkpoint" />
-
 #### View thread state
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 config = {
     "configurable": {
-        "thread_id": "1",  # [!code highlight]
+        "thread_id": "1",
         # optionally provide an ID for a specific checkpoint,
         # otherwise the latest checkpoint is shown
-        # "checkpoint_id": "1f029ca3-1f5b-6704-8004-820c16b69a5a"  # [!code highlight]
+        # "checkpoint_id": "1f029ca3-1f5b-6704-8004-820c16b69a5a"
 
     }
 }
-graph.get_state(config)  # [!code highlight]
+graph.get_state(config)
 ```
 
 ```
@@ -680,17 +669,15 @@ StateSnapshot(
 )
 ```
 
-<a id="checkpoints" />
-
 #### View the history of the thread
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 config = {
     "configurable": {
-        "thread_id": "1"  # [!code highlight]
+        "thread_id": "1"
     }
 }
-list(graph.get_state_history(config))  # [!code highlight]
+list(graph.get_state_history(config))
 ```
 
 ```
@@ -765,7 +752,7 @@ Use `entrypoint.final` to decouple what is returned to the caller from what is p
 * You want to return a computed result (e.g., a summary or status), but save a different internal value for use on the next invocation.
 * You need to control what gets passed to the previous parameter on the next run.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.func import entrypoint
 from langgraph.checkpoint.memory import InMemorySaver
 
@@ -787,11 +774,11 @@ print(accumulate.invoke(3, config=config))  # 3
 
 ### Chatbot example
 
-An example of a simple chatbot using the functional API and the [`InMemorySaver`](https://reference.langchain.com/python/langgraph/checkpoints/#langgraph.checkpoint.memory.InMemorySaver) checkpointer.
+An example of a simple chatbot using the functional API and the `InMemorySaver` checkpointer.
 
 The bot is able to remember the previous conversation and continue from where it left off.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.messages import BaseMessage
 from langgraph.graph import add_messages
 from langgraph.func import entrypoint, task
@@ -829,14 +816,14 @@ for snapshot in stream.values:
 
 ## Long-term memory
 
-[long-term memory](/oss/python/concepts/memory#long-term-memory) allows storing information across different **thread ids**. This could be useful for learning information about a given user in one conversation and using it in another.
+long-term memory allows storing information across different **thread ids**. This could be useful for learning information about a given user in one conversation and using it in another.
 
 ## Workflows
 
-* [Workflows and agent](/oss/python/langgraph/workflows-agents) guide for more examples of how to build workflows using the Functional API.
+* Workflows and agent guide for more examples of how to build workflows using the Functional API.
 
 ## Integrate with other libraries
 
-* [Add LangGraph's features to other frameworks using the functional API](/langsmith/deploy-other-frameworks): Add LangGraph features like persistence, memory and streaming to other agent frameworks that do not provide them out of the box.
+* Add LangGraph's features to other frameworks using the functional API: Add LangGraph features like persistence, memory and streaming to other agent frameworks that do not provide them out of the box.
 
 ***

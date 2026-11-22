@@ -15,7 +15,7 @@ Voice agents are one example of this. Instead of relying on a keyboard and mouse
 
 ### What are voice agents?
 
-Voice agents are [agents](/oss/python/langchain/agents) that can engage in natural spoken conversations with users. These agents combine speech recognition, natural language processing, generative AI, and text-to-speech technologies to create seamless, natural conversations.
+Voice agents are agents that can engage in natural spoken conversations with users. These agents combine speech recognition, natural language processing, generative AI, and text-to-speech technologies to create seamless, natural conversations.
 
 They're suited for a variety of use cases, including:
 
@@ -38,7 +38,7 @@ The difference lies in how these steps are sequenced and coupled. In practice, p
 
 The Sandwich architecture composes three distinct components: speech-to-text (STT), a text-based LangChain agent, and text-to-speech (TTS).
 
-```mermaid theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```mermaid
 flowchart LR
     A[User Audio] --> B[Speech-to-Text]
     B --> C[LangChain Agent]
@@ -68,7 +68,7 @@ flowchart LR
 
 Speech-to-speech uses a multimodal model that processes audio input and generates audio output natively.
 
-```mermaid theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```mermaid
 flowchart LR
     A[User Audio] --> B[Multimodal Model]
     B --> C[Audio Output]
@@ -97,9 +97,9 @@ This guide demonstrates the **sandwich architecture** to balance performance, co
 
 ### Demo Application overview
 
-We'll walk through building a voice-based agent using the sandwich architecture. The agent will manage orders for a sandwich shop. The application will demonstrate all three components of the sandwich architecture, using [AssemblyAI](https://www.assemblyai.com/) for STT and [Cartesia](https://cartesia.ai/) for TTS (although adapters can be built for most providers).
+We'll walk through building a voice-based agent using the sandwich architecture. The agent will manage orders for a sandwich shop. The application will demonstrate all three components of the sandwich architecture, using AssemblyAI for STT and Cartesia for TTS (although adapters can be built for most providers).
 
-An end-to-end reference application is available in the [voice-sandwich-demo](https://github.com/langchain-ai/voice-sandwich-demo) repository. We will walk through that application here.
+An end-to-end reference application is available in the voice-sandwich-demo repository. We will walk through that application here.
 
 The demo uses WebSockets for real-time bidirectional communication between the browser and server. The same architecture can be adapted for other transports like telephony systems (Twilio, Vonage) or WebRTC connections.
 
@@ -119,9 +119,9 @@ The demo implements a streaming pipeline where each stage processes data asynchr
 * Accepts WebSocket connections from clients
 
 * Orchestrates the three-step pipeline:
-  * [Speech-to-text (STT)](#1-speech-to-text): Forwards audio to the STT provider (e.g., AssemblyAI), receives transcript events
-  * [Agent](#2-langchain-agent): Processes transcripts with LangChain agent, streams response tokens
-  * [Text-to-speech (TTS)](#3-text-to-speech): Sends agent responses to the TTS provider (e.g., Cartesia), receives audio chunks
+* Speech-to-text (STT): Forwards audio to the STT provider (e.g., AssemblyAI), receives transcript events
+* Agent: Processes transcripts with LangChain agent, streams response tokens
+* Text-to-speech (TTS): Sends agent responses to the TTS provider (e.g., Cartesia), receives audio chunks
 
 * Returns synthesized audio to the client for playback
 
@@ -129,7 +129,7 @@ The pipeline uses async generators to enable streaming at each stage. This allow
 
 ## Setup
 
-For detailed installation instructions and setup, see the [repository README](https://github.com/langchain-ai/voice-sandwich-demo#readme).
+For detailed installation instructions and setup, see the repository README.
 
 ## 1. Speech-to-text
 
@@ -148,7 +148,7 @@ The STT stage transforms an incoming audio stream into text transcripts. The imp
 
 ### Implementation
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from typing import AsyncIterator
 import asyncio
 from assemblyai_stt import AssemblyAISTT
@@ -192,8 +192,8 @@ async def stt_stream(
 
 The application implements an AssemblyAI client to manage the WebSocket connection and message parsing. See below for implementations; similar adapters can be constructed for other STT providers.
 
-<Accordion title="AssemblyAI Client">
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+AssemblyAI Client
+  ```python
   class AssemblyAISTT:
       def __init__(self, api_key: str | None = None, sample_rate: int = 16000):
           self.api_key = api_key or os.getenv("ASSEMBLYAI_API_KEY")
@@ -228,21 +228,20 @@ The application implements an AssemblyAI client to manage the WebSocket connecti
               )
           return self._ws
   ```
-</Accordion>
 
 ## 2. LangChain agent
 
-The agent stage processes text transcripts through a LangChain [agent](/oss/python/langchain/agents) and streams the response tokens. In this case, we stream all [text content blocks](/oss/python/langchain/messages#content-block-reference) generated by the agent.
+The agent stage processes text transcripts through a LangChain agent and streams the response tokens. In this case, we stream all text content blocks generated by the agent.
 
 ### Key concepts
 
-**Streaming Responses**: The agent uses [`stream_events(version="v3")`](/oss/python/langchain/streaming) with `stream.messages` to emit response tokens as they are generated, rather than waiting for the complete response. This enables the TTS stage to begin synthesis immediately.
+**Streaming Responses**: The agent uses `stream_events(version="v3")` with `stream.messages` to emit response tokens as they are generated, rather than waiting for the complete response. This enables the TTS stage to begin synthesis immediately.
 
-**Conversation Memory**: A [checkpointer](/oss/python/langchain/short-term-memory) maintains conversation state across turns using a unique thread ID. This allows the agent to reference previous exchanges in the conversation.
+**Conversation Memory**: A checkpointer maintains conversation state across turns using a unique thread ID. This allows the agent to reference previous exchanges in the conversation.
 
 ### Implementation
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_core.utils.uuid import uuid7
 from langchain.agents import create_agent
 from langchain.messages import HumanMessage
@@ -310,13 +309,13 @@ The TTS stage synthesizes agent response text into audio and streams it back to 
 * **Upstream processing**: Passes through all events and sends agent text chunks to the TTS provider
 * **Audio reception**: Receives synthesized audio chunks from the TTS provider
 
-**Streaming TTS**: Some providers (such as [Cartesia](https://cartesia.ai/)) begin synthesizing audio as soon as it receives text, enabling audio playback to start before the agent finishes generating its complete response.
+**Streaming TTS**: Some providers (such as Cartesia) begin synthesizing audio as soon as it receives text, enabling audio playback to start before the agent finishes generating its complete response.
 
 **Event Passthrough**: All upstream events flow through unchanged, allowing the client or other observers to track the full pipeline state.
 
 ### Implementation
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from cartesia_tts import CartesiaTTS
 from utils import merge_async_iters
 
@@ -355,8 +354,8 @@ async def tts_stream(
 
 The application implements a Cartesia client to manage the WebSocket connection and audio streaming. See below for implementations; similar adapters can be constructed for other TTS providers.
 
-<Accordion title="Cartesia Client">
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Cartesia Client
+  ```python
   import base64
   import json
   import websockets
@@ -429,22 +428,21 @@ The application implements a Cartesia client to manage the WebSocket connection 
 
           return self._ws
   ```
-</Accordion>
 
 ### LangSmith
 
-Many of the applications you build with LangChain will contain multiple steps with multiple invocations of LLM calls. As these applications get more complex, it becomes crucial to be able to inspect what exactly is going on inside your chain or agent. The best way to do this is with [LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-langchain-voice-agent).
+Many of the applications you build with LangChain will contain multiple steps with multiple invocations of LLM calls. As these applications get more complex, it becomes crucial to be able to inspect what exactly is going on inside your chain or agent. The best way to do this is with LangSmith.
 
 After you sign up at the link above, make sure to set your environment variables to start logging traces:
 
-```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```shell
 export LANGSMITH_TRACING="true"
 export LANGSMITH_API_KEY="..."
 ```
 
 Or, set them in Python:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import getpass
 import os
 
@@ -456,7 +454,7 @@ os.environ["LANGSMITH_API_KEY"] = getpass.getpass()
 
 The complete pipeline chains the three stages together:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_core.runnables import RunnableGenerator
 
 pipeline = (
@@ -485,10 +483,10 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.send_bytes(event.audio)
 ```
 
-We use [RunnableGenerators](https://reference.langchain.com/python/langchain_core/runnables/#langchain_core.runnables.base.RunnableGenerator) to compose each step of the pipeline. This is an abstraction LangChain uses internally to manage [streaming across components](https://reference.langchain.com/python/langchain_core/runnables/).
+We use RunnableGenerators to compose each step of the pipeline. This is an abstraction LangChain uses internally to manage streaming across components.
 
 Each stage processes events independently and concurrently: audio transcription begins as soon as audio arrives, the agent starts reasoning as soon as a transcript is available, and speech synthesis begins as soon as agent text is generated. This architecture can achieve sub-700ms latency to support natural conversation.
 
-For more on building agents with LangChain, see the [Agents guide](/oss/python/langchain/agents).
+For more on building agents with LangChain, see the Agents guide.
 
 ***

@@ -9,32 +9,20 @@ url: https://docs.langchain.com/oss/python/langgraph/persistence
 
 > LangGraph's persistence layer gives agents short-term memory through checkpointers and long-term memory through stores.
 
-<a id="checkpoints" />
-
-<a id="threads" />
-
-<a id="memory-store" />
-
-<a id="checkpointer-libraries" />
-
-<a id="pending-writes" />
-
-<a id="durability-modes" />
-
 Persistence lets LangGraph applications keep useful information beyond a single graph run. It matters when an agent needs to continue a conversation, resume after an interruption, recover from a failure, or remember information across interactions.
 
 LangGraph provides two complementary persistence systems:
 
-* **[Checkpointers](/oss/python/langgraph/checkpointers)** persist a thread's graph state as checkpoints. Use them for short-term, thread-scoped memory, including conversation continuity, human-in-the-loop workflows, time travel, and fault tolerance.
-* **[Stores](/oss/python/langgraph/stores)** persist application-defined data outside the graph state. Use them for long-term, cross-thread memory, including user preferences, facts, and shared knowledge.
+* **Checkpointers** persist a thread's graph state as checkpoints. Use them for short-term, thread-scoped memory, including conversation continuity, human-in-the-loop workflows, time travel, and fault tolerance.
+* **Stores** persist application-defined data outside the graph state. Use them for long-term, cross-thread memory, including user preferences, facts, and shared knowledge.
 
-Most applications can use both: a [checkpointer](/oss/python/langgraph/checkpointers) tracks the current thread, and a [store](/oss/python/langgraph/stores) tracks durable information across threads.
+Most applications can use both: a checkpointer tracks the current thread, and a store tracks durable information across threads.
 
 ## Quickstart
 
 Compile your graph with a checkpointer, a store, or both:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.store.memory import InMemoryStore
 
@@ -49,10 +37,8 @@ result = graph.invoke(
 )
 ```
 
-<Info>
-  **Agent Server handles persistence automatically**
-  When using the [Agent Server](/langsmith/agent-server), you do not need to implement or configure checkpointers or stores manually. The server handles persistence infrastructure behind the scenes.
-</Info>
+**Agent Server handles persistence automatically**
+When using the Agent Server, you do not need to implement or configure checkpointers or stores manually. The server handles persistence infrastructure behind the scenes.
 
 ## Checkpointer vs. store
 
@@ -63,7 +49,7 @@ result = graph.invoke(
 | Memory type    | Short-term, thread-scoped memory                                             | Long-term, cross-thread memory                      |
 | Use for        | Conversation continuity, human-in-the-loop, time travel, and fault tolerance | User preferences, facts, and shared knowledge       |
 | Access pattern | Pass a `thread_id` in graph config                                           | Read and write items from nodes or application code |
-| Full guide     | [Checkpointers](/oss/python/langgraph/checkpointers)                         | [Stores](/oss/python/langgraph/stores)              |
+| Full guide     | Checkpointers                         | Stores              |
 
 ## Troubleshooting common issues
 
@@ -73,7 +59,7 @@ When using `PostgresSaver` (or `AsyncPostgresSaver`), the `thread_id` is stored 
 
 **Fix:** Keep `thread_id` values under 255 characters. Use a UUID or hash if you need deterministic IDs:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import uuid
 
 config = {"configurable": {"thread_id": str(uuid.uuid4())[:255]}}
@@ -94,7 +80,7 @@ Over long conversations, checkpoints accumulate. This can increase latency and s
 
 **Fix:** Prune old checkpoints periodically or set a retention policy:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.checkpoint.postgres import PostgresSaver
 
 checkpointer = PostgresSaver.from_conn_string("postgresql://...")
@@ -106,10 +92,9 @@ checkpointer.setup()  # Creates tables with indexes
 
 When a subgraph updates state, the parent graph may not see the changes immediately. This is because each subgraph manages its own checkpoint namespace.
 
-**Fix:** Use [shared state via Store](/oss/python/langgraph/stores) for data that needs to cross graph boundaries, or configure your subgraph to write to the parent checkpoint.
+**Fix:** Use shared state via Store for data that needs to cross graph boundaries, or configure your subgraph to write to the parent checkpoint.
 
 ## Next steps
 
-* [Use checkpointers](/oss/python/langgraph/checkpointers) to persist and inspect thread state.
-* [Use stores](/oss/python/langgraph/stores) to persist durable data across threads.
-
+* Use checkpointers to persist and inspect thread state.
+* Use stores to persist durable data across threads.

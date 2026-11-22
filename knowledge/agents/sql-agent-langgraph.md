@@ -9,13 +9,11 @@ url: https://docs.langchain.com/oss/python/langgraph/sql-agent
 
 In this tutorial we will build a custom agent that can answer questions about a SQL database using LangGraph.
 
-LangChain offers built-in [agent](/oss/python/langchain/agents) implementations, implemented using [LangGraph](/oss/python/langgraph/overview) primitives. If deeper customization is required, agents can be implemented directly in LangGraph. This guide demonstrates an example implementation of a SQL agent. For a practical introduction, see [building a SQL agent using higher-level LangChain abstractions](/oss/python/langchain/sql-agent).
+LangChain offers built-in agent implementations, implemented using LangGraph primitives. If deeper customization is required, agents can be implemented directly in LangGraph. This guide demonstrates an example implementation of a SQL agent. For a practical introduction, see building a SQL agent using higher-level LangChain abstractions.
 
-<Warning>
-  Building Q\&A systems of SQL databases requires executing model-generated SQL queries. There are inherent risks in doing this. Make sure that your database connection permissions are always scoped as narrowly as possible for your agent's needs. This will mitigate, though not eliminate, the risks of building a model-driven system.
-</Warning>
+Building Q\&A systems of SQL databases requires executing model-generated SQL queries. There are inherent risks in doing this. Make sure that your database connection permissions are always scoped as narrowly as possible for your agent's needs. This will mitigate, though not eliminate, the risks of building a model-driven system.
 
-The [prebuilt agent](/oss/python/langchain/sql-agent) lets us get started quickly, but we relied on the system prompt to constrain its behavior—for example, we instructed the agent to always start with the "list tables" tool, and to always run a query-checker tool before executing the query.
+The prebuilt agent lets us get started quickly, but we relied on the system prompt to constrain its behavior—for example, we instructed the agent to always start with the "list tables" tool, and to always run a query-checker tool before executing the query.
 
 We can enforce a higher degree of control in LangGraph by customizing the agent. Here, we implement a simple ReAct-agent setup, with dedicated nodes for specific tool-calls. We will use the same \[state] as the prebuilt agent.
 
@@ -23,49 +21,42 @@ We can enforce a higher degree of control in LangGraph by customizing the agent.
 
 We will cover the following concepts:
 
-* [Tools](/oss/python/langchain/tools) for reading from SQL databases
-* The LangGraph [Graph API](/oss/python/langgraph/graph-api), including state, nodes, edges, and conditional edges.
-* [Human-in-the-loop](/oss/python/langgraph/interrupts) processes
+* Tools for reading from SQL databases
+* The LangGraph Graph API, including state, nodes, edges, and conditional edges.
+* Human-in-the-loop processes
 
 ## Setup
 
 ### Installation
 
-<CodeGroup>
-  ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```bash pip
   pip install langchain langgraph
   ```
-</CodeGroup>
 
 ### LangSmith
 
-Set up [LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-langgraph-sql-agent) to inspect what is happening inside your chain or agent. Then set the following environment variables:
+Set up LangSmith to inspect what is happening inside your chain or agent. Then set the following environment variables:
 
-```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```shell
 export LANGSMITH_TRACING="true"
 export LANGSMITH_API_KEY="..."
 ```
 
 ## 1. Select an LLM
 
-Select a model that supports [tool-calling](/oss/python/integrations/providers/overview):
+Select a model that supports tool-calling:
 
-<Tabs>
-  <Tab title="OpenAI">
-    👉 Read the [OpenAI chat model integration docs](/oss/python/integrations/chat/openai/)
+    👉 Read the OpenAI chat model integration docs
 
-    <CodeGroup>
-      ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash pip
       pip install -U "langchain[openai]"
       ```
 
-      ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash uv
       uv add "langchain[openai]"
       ```
-    </CodeGroup>
 
-    <CodeGroup>
-      ```python init_chat_model theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python init_chat_model
       import os
       from langchain.chat_models import init_chat_model
 
@@ -74,7 +65,7 @@ Select a model that supports [tool-calling](/oss/python/integrations/providers/o
       model = init_chat_model("gpt-5.5")
       ```
 
-      ```python Model Class theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Model Class
       import os
       from langchain_openai import ChatOpenAI
 
@@ -82,24 +73,18 @@ Select a model that supports [tool-calling](/oss/python/integrations/providers/o
 
       model = ChatOpenAI(model="gpt-5.5")
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="Anthropic">
-    👉 Read the [Anthropic chat model integration docs](/oss/python/integrations/chat/anthropic/)
+    👉 Read the Anthropic chat model integration docs
 
-    <CodeGroup>
-      ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash pip
       pip install -U "langchain[anthropic]"
       ```
 
-      ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash uv
       uv add "langchain[anthropic]"
       ```
-    </CodeGroup>
 
-    <CodeGroup>
-      ```python init_chat_model theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python init_chat_model
       import os
       from langchain.chat_models import init_chat_model
 
@@ -108,7 +93,7 @@ Select a model that supports [tool-calling](/oss/python/integrations/providers/o
       model = init_chat_model("claude-sonnet-4-6")
       ```
 
-      ```python Model Class theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Model Class
       import os
       from langchain_anthropic import ChatAnthropic
 
@@ -116,24 +101,18 @@ Select a model that supports [tool-calling](/oss/python/integrations/providers/o
 
       model = ChatAnthropic(model="claude-sonnet-4-6")
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="Azure">
-    👉 Read the [Azure chat model integration docs](/oss/python/integrations/chat/azure_chat_openai/)
+    👉 Read the Azure chat model integration docs
 
-    <CodeGroup>
-      ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash pip
       pip install -U "langchain[openai]"
       ```
 
-      ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash uv
       uv add "langchain[openai]"
       ```
-    </CodeGroup>
 
-    <CodeGroup>
-      ```python init_chat_model theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python init_chat_model
       import os
       from langchain.chat_models import init_chat_model
 
@@ -147,7 +126,7 @@ Select a model that supports [tool-calling](/oss/python/integrations/providers/o
       )
       ```
 
-      ```python Model Class theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Model Class
       import os
       from langchain_openai import AzureChatOpenAI
 
@@ -160,24 +139,18 @@ Select a model that supports [tool-calling](/oss/python/integrations/providers/o
           azure_deployment=os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"]
       )
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="Google Gemini">
-    👉 Read the [Google GenAI chat model integration docs](/oss/python/integrations/chat/google_generative_ai/)
+    👉 Read the Google GenAI chat model integration docs
 
-    <CodeGroup>
-      ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash pip
       pip install -U "langchain[google-genai]"
       ```
 
-      ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash uv
       uv add "langchain[google-genai]"
       ```
-    </CodeGroup>
 
-    <CodeGroup>
-      ```python init_chat_model theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python init_chat_model
       import os
       from langchain.chat_models import init_chat_model
 
@@ -186,7 +159,7 @@ Select a model that supports [tool-calling](/oss/python/integrations/providers/o
       model = init_chat_model("google_genai:gemini-3.7-flash")
       ```
 
-      ```python Model Class theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Model Class
       import os
       from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -194,24 +167,18 @@ Select a model that supports [tool-calling](/oss/python/integrations/providers/o
 
       model = ChatGoogleGenerativeAI(model="gemini-3.7-flash")
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="AWS Bedrock">
-    👉 Read the [AWS Bedrock chat model integration docs](/oss/python/integrations/chat/bedrock/)
+    👉 Read the AWS Bedrock chat model integration docs
 
-    <CodeGroup>
-      ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash pip
       pip install -U "langchain[aws]"
       ```
 
-      ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash uv
       uv add "langchain[aws]"
       ```
-    </CodeGroup>
 
-    <CodeGroup>
-      ```python init_chat_model theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python init_chat_model
       from langchain.chat_models import init_chat_model
 
       # Follow the steps here to configure your credentials:
@@ -223,29 +190,23 @@ Select a model that supports [tool-calling](/oss/python/integrations/providers/o
       )
       ```
 
-      ```python Model Class theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Model Class
       from langchain_aws import ChatBedrock
 
       model = ChatBedrock(model="us.anthropic.claude-sonnet-4-6")
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="HuggingFace">
-    👉 Read the [HuggingFace chat model integration docs](/oss/python/integrations/chat/huggingface/)
+    👉 Read the HuggingFace chat model integration docs
 
-    <CodeGroup>
-      ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash pip
       pip install -U "langchain[huggingface]"
       ```
 
-      ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash uv
       uv add "langchain[huggingface]"
       ```
-    </CodeGroup>
 
-    <CodeGroup>
-      ```python init_chat_model theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python init_chat_model
       import os
       from langchain.chat_models import init_chat_model
 
@@ -259,7 +220,7 @@ Select a model that supports [tool-calling](/oss/python/integrations/providers/o
       )
       ```
 
-      ```python Model Class theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Model Class
       import os
       from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 
@@ -272,24 +233,18 @@ Select a model that supports [tool-calling](/oss/python/integrations/providers/o
       )
       model = ChatHuggingFace(llm=llm)
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="OpenRouter">
-    👉 Read the [OpenRouter chat model integration docs](/oss/python/integrations/chat/openrouter/)
+    👉 Read the OpenRouter chat model integration docs
 
-    <CodeGroup>
-      ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash pip
       pip install -U "langchain-openrouter"
       ```
 
-      ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash uv
       uv add "langchain-openrouter"
       ```
-    </CodeGroup>
 
-    <CodeGroup>
-      ```python init_chat_model theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python init_chat_model
       import os
       from langchain.chat_models import init_chat_model
 
@@ -301,7 +256,7 @@ Select a model that supports [tool-calling](/oss/python/integrations/providers/o
       )
       ```
 
-      ```python Model Class theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Model Class
       import os
       from langchain_openrouter import ChatOpenRouter
 
@@ -309,19 +264,16 @@ Select a model that supports [tool-calling](/oss/python/integrations/providers/o
 
       model = ChatOpenRouter(model="auto")
       ```
-    </CodeGroup>
-  </Tab>
-</Tabs>
 
 The output shown in the examples below used OpenAI.
 
 ## 2. Configure the database
 
-You will be creating a [SQLite database](https://www.sqlitetutorial.net/sqlite-sample-database/) for this tutorial. SQLite is a lightweight database that is easy to set up and use. We will be loading the `chinook` database, which is a sample database that represents a digital media store.
+You will be creating a SQLite database for this tutorial. SQLite is a lightweight database that is easy to set up and use. We will be loading the `chinook` database, which is a sample database that represents a digital media store.
 
 For convenience, we have hosted the database (`Chinook.db`) on a public GCS bucket.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import pathlib
 import requests
 
@@ -341,7 +293,7 @@ else:
 
 We will use Python's built-in `sqlite3` module to interact with the database:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import sqlite3
 
 con = sqlite3.connect("Chinook.db")
@@ -366,13 +318,11 @@ Sample output: [(1, 'AC/DC'), (2, 'Accept'), (3, 'Aerosmith'), (4, 'Alanis Moris
 
 ## 3. Add tools for database interactions
 
-<Warning>
-  The following database tools are minimal wrappers for demonstration purposes only. They are not intended to be secure or used in production. Use narrowly scoped database permissions and add application-specific validation before executing model-generated SQL.
-</Warning>
+The following database tools are minimal wrappers for demonstration purposes only. They are not intended to be secure or used in production. Use narrowly scoped database permissions and add application-specific validation before executing model-generated SQL.
 
-We can implement database [tools](/oss/python/langchain/tools) as thin wrappers using the `@tool` decorator from `langchain.tools`:
+We can implement database tools as thin wrappers using the `@tool` decorator from `langchain.tools`:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import sqlite3
 from langchain.tools import tool
 
@@ -495,7 +445,7 @@ We construct dedicated nodes for the following steps:
 
 Putting these steps in dedicated nodes lets us (1) force tool-calls when needed, and (2) customize the prompts associated with each step.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from typing import Literal
 
 from langchain.messages import AIMessage
@@ -605,9 +555,9 @@ def check_query(state: MessagesState):
 
 ## 5. Implement the agent
 
-We can now assemble these steps into a workflow using the [Graph API](/oss/python/langgraph/graph-api). We define a [conditional edge](/oss/python/langgraph/graph-api#conditional-edges) at the query generation step that will route to the query checker if a query is generated, or end if there are no tool calls present, such that the LLM has delivered a response to the query.
+We can now assemble these steps into a workflow using the Graph API. We define a conditional edge at the query generation step that will route to the query checker if a query is generated, or end if there are no tool calls present, such that the LLM has delivered a response to the query.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 def should_continue(state: MessagesState) -> Literal[END, "check_query"]:
     messages = state["messages"]
     last_message = messages[-1]
@@ -641,17 +591,15 @@ agent = builder.compile()
 
 We visualize the application below:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import pathlib
 
 pathlib.Path("graph.png").write_bytes(agent.get_graph().draw_mermaid_png())
 ```
 
-<img src="https://mintcdn.com/langchain-5e9cc07a/aAi4RLdXQAh8fThS/oss/images/sql-agent-langgraph.png?fit=max&auto=format&n=aAi4RLdXQAh8fThS&q=85&s=1ddd4aae369fb8c143edaccb0a09c81f" alt="SQL agent graph" style={{ height: "800px" }} width="308" height="645" data-path="oss/images/sql-agent-langgraph.png" />
-
 We can now invoke the graph:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 question = "Which genre on average has the longest tracks?"
 
 stream = agent.stream_events(
@@ -741,19 +689,17 @@ Name: sql_db_query
 The genre with the longest tracks on average is "Sci Fi & Fantasy," with an average track length of approximately 2,911,783 milliseconds. Other genres with relatively long tracks include "Science Fiction," "Drama," "TV Shows," and "Comedy."
 ```
 
-<Tip>
-  See [LangSmith trace](https://smith.langchain.com/public/94b8c9ac-12f7-4692-8706-836a1f30f1ea/r) for the above run.
-</Tip>
+See LangSmith trace for the above run.
 
 ## 6. Implement human-in-the-loop review
 
 It can be prudent to check the agent's SQL queries before they are executed for any unintended actions or inefficiencies.
 
-Here we leverage LangGraph's [human-in-the-loop](/oss/python/langgraph/interrupts) features to pause the run before executing a SQL query and wait for human review. Using LangGraph's [persistence layer](/oss/python/langgraph/persistence), we can pause the run indefinitely (or at least as long as the persistence layer is alive).
+Here we leverage LangGraph's human-in-the-loop features to pause the run before executing a SQL query and wait for human review. Using LangGraph's persistence layer, we can pause the run indefinitely (or at least as long as the persistence layer is alive).
 
-Let's wrap the `sql_db_query` tool in a node that receives human input. We can implement this using the [interrupt](/oss/python/langgraph/interrupts) function. Below, we allow for input to approve the tool call, edit its arguments, or provide user feedback.
+Let's wrap the `sql_db_query` tool in a node that receives human input. We can implement this using the interrupt function. Below, we allow for input to approve the tool call, edit its arguments, or provide user feedback.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.tools import tool
 from langgraph.types import interrupt
 from langchain_core.runnables import RunnableConfig
@@ -770,7 +716,7 @@ def run_query_tool_with_interrupt(config: RunnableConfig, **tool_input):
         "args": tool_input,
         "description": "Please review the tool call",
     }
-    response = interrupt([request])  # [!code highlight]
+    response = interrupt([request])
     # approve the tool call
     if response["type"] == "accept":
         tool_response = run_query_tool.invoke(tool_input, config)
@@ -789,16 +735,14 @@ def run_query_tool_with_interrupt(config: RunnableConfig, **tool_input):
 
 
 # Redefine the tool node to use the interrupt version
-run_query_node = ToolNode([run_query_tool_with_interrupt], name="run_query")  # [!code highlight]
+run_query_node = ToolNode([run_query_tool_with_interrupt], name="run_query")
 ```
 
-<Note>
-  The above implementation follows the [tool interrupt example](/oss/python/langgraph/interrupts#interrupts-in-tools) in the broader [human-in-the-loop](/oss/python/langgraph/interrupts) guide. Refer to that guide for details and alternatives.
-</Note>
+The above implementation follows the tool interrupt example in the broader human-in-the-loop guide. Refer to that guide for details and alternatives.
 
-Let's now re-assemble our graph. We will replace the programmatic check with human review. Note that we now include a [checkpointer](/oss/python/langgraph/persistence); this is required to pause and resume the run.
+Let's now re-assemble our graph. We will replace the programmatic check with human review. Note that we now include a checkpointer; this is required to pause and resume the run.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.checkpoint.memory import InMemorySaver
 
 def should_continue(state: MessagesState) -> Literal[END, "run_query"]:
@@ -826,13 +770,13 @@ builder.add_conditional_edges(
 )
 builder.add_edge("run_query", "generate_query")
 
-checkpointer = InMemorySaver()  # [!code highlight]
-agent = builder.compile(checkpointer=checkpointer)  # [!code highlight]
+checkpointer = InMemorySaver()
+agent = builder.compile(checkpointer=checkpointer)
 ```
 
 We can invoke the graph as before. This time, execution is interrupted:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 question = "Which genre on average has the longest tracks?"
 
 stream = agent.stream_events(
@@ -863,9 +807,9 @@ INTERRUPTED:
 }
 ```
 
-We can accept or edit the tool call using [Command](/oss/python/langgraph/use-graph-api#combine-control-flow-and-state-updates-with-command):
+We can accept or edit the tool call using Command:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.types import Command
 
 stream = agent.stream_events(
@@ -900,10 +844,10 @@ Name: sql_db_query
 The genre with the longest average track length is "Sci Fi & Fantasy" with an average length of about 2,911,783 milliseconds. Other genres with long average track lengths include "Science Fiction," "Drama," "TV Shows," and "Comedy."
 ```
 
-Refer to the [human-in-the-loop guide](/oss/python/langgraph/interrupts) for details.
+Refer to the human-in-the-loop guide for details.
 
 ## Next steps
 
-Check out the [Evaluate a graph](/langsmith/evaluate-graph) guide for evaluating LangGraph applications, including SQL agents like this one, using LangSmith.
+Check out the Evaluate a graph guide for evaluating LangGraph applications, including SQL agents like this one, using LangSmith.
 
 ***

@@ -22,9 +22,7 @@ More often than not - it's actually the second reason that causes agents to not 
 
 **Context engineering** is providing the right information and tools in the right format so the LLM can accomplish a task. This is the number one job of AI Engineers. This lack of "right" context is the number one blocker for more reliable agents, and LangChain's agent abstractions are uniquely designed to facilitate context engineering.
 
-<Tip>
-  New to context engineering? Start with the [conceptual overview](/oss/python/concepts/context) to understand the different types of context and when to use them.
-</Tip>
+New to context engineering? Start with the conceptual overview to understand the different types of context and when to use them.
 
 ### The agent loop
 
@@ -32,10 +30,6 @@ A typical agent loop consists of two main steps:
 
 1. **Model call** - calls the LLM with a prompt and available tools, returns either a response or a request to execute tools
 2. **Tool execution** - executes the tools that the LLM requested, returns tool results
-
-<div style={{ display: "flex", justifyContent: "center" }}>
-  <img src="https://mintcdn.com/langchain-5e9cc07a/Tazq8zGc0yYUYrDl/oss/images/core_agent_loop.png?fit=max&auto=format&n=Tazq8zGc0yYUYrDl&q=85&s=ac72e48317a9ced68fd1be64e89ec063" alt="Core agent loop diagram" className="rounded-lg" width="300" height="268" data-path="oss/images/core_agent_loop.png" />
-</div>
 
 This loop continues until the LLM decides to finish.
 
@@ -45,19 +39,15 @@ To build reliable agents, you need to control what happens at each step of the a
 
 | Context Type                                  | What You Control                                                                     | Transient or Persistent |
 | --------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------- |
-| **[Model Context](#model-context)**           | What goes into model calls (instructions, message history, tools, response format)   | Transient               |
-| **[Tool Context](#tool-context)**             | What tools can access and produce (reads/writes to state, store, runtime context)    | Persistent              |
-| **[Life-cycle Context](#life-cycle-context)** | What happens between model and tool calls (summarization, guardrails, logging, etc.) | Persistent              |
+| **Model Context**           | What goes into model calls (instructions, message history, tools, response format)   | Transient               |
+| **Tool Context**             | What tools can access and produce (reads/writes to state, store, runtime context)    | Persistent              |
+| **Life-cycle Context** | What happens between model and tool calls (summarization, guardrails, logging, etc.) | Persistent              |
 
-<CardGroup>
-  <Card title="Transient context" icon="bolt" iconType="duotone">
+Transient context
     What the LLM sees for a single call. You can modify messages, tools, or prompts without changing what's saved in state.
-  </Card>
 
-  <Card title="Persistent context" icon="database" iconType="duotone">
+Persistent context
     What gets saved in state across turns. Life-cycle hooks and tool writes modify this permanently.
-  </Card>
-</CardGroup>
 
 ### Data sources
 
@@ -71,7 +61,7 @@ Throughout this process, your agent accesses (reads / writes) different sources 
 
 ### How it works
 
-LangChain [middleware](/oss/python/langchain/middleware) is the mechanism under the hood that makes context engineering practical for developers using LangChain.
+LangChain middleware is the mechanism under the hood that makes context engineering practical for developers using LangChain.
 
 Middleware allows you to hook into any step in the agent lifecycle and:
 
@@ -84,27 +74,20 @@ Throughout this guide, you'll see frequent use of the middleware API as a means 
 
 Control what goes into each model call - instructions, available tools, which model to use, and output format. These decisions directly impact reliability and cost.
 
-<CardGroup cols={2}>
-  <Card title="System Prompt" icon="message-2" href="#system-prompt">
+System Prompt
     Base instructions from the developer to the LLM.
-  </Card>
 
-  <Card title="Messages" icon="messages" href="#messages">
+Messages
     The full list of messages (conversation history) sent to the LLM.
-  </Card>
 
-  <Card title="Tools" icon="tool" href="#tools">
+Tools
     Utilities the agent has access to for taking actions.
-  </Card>
 
-  <Card title="Model" icon="cpu" href="#model">
+Model
     The actual model (including configuration) to be called.
-  </Card>
 
-  <Card title="Response Format" icon="braces" href="#response-format">
+Response Format
     Schema specification for the model's final response.
-  </Card>
-</CardGroup>
 
 All of these types of model context can draw from **state** (short-term memory), **store** (long-term memory), or **runtime context** (static configuration).
 
@@ -112,11 +95,9 @@ All of these types of model context can draw from **state** (short-term memory),
 
 The system prompt sets the LLM's behavior and capabilities. Different users, contexts, or conversation stages need different instructions. Successful agents draw on memories, preferences, and configuration to provide the right instructions for the current state of the conversation.
 
-<Tabs>
-  <Tab title="State">
     Access message count or conversation context from state:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents import create_agent
     from langchain.agents.middleware import dynamic_prompt, ModelRequest
 
@@ -138,12 +119,10 @@ The system prompt sets the LLM's behavior and capabilities. Different users, con
         middleware=[state_aware_prompt]
     )
     ```
-  </Tab>
 
-  <Tab title="Store">
     Access user preferences from long-term memory:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from dataclasses import dataclass
     from langchain.agents import create_agent
     from langchain.agents.middleware import dynamic_prompt, ModelRequest
@@ -177,12 +156,10 @@ The system prompt sets the LLM's behavior and capabilities. Different users, con
         store=InMemoryStore()
     )
     ```
-  </Tab>
 
-  <Tab title="Runtime Context">
     Access user ID or configuration from Runtime Context:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from dataclasses import dataclass
     from langchain.agents import create_agent
     from langchain.agents.middleware import dynamic_prompt, ModelRequest
@@ -217,19 +194,15 @@ The system prompt sets the LLM's behavior and capabilities. Different users, con
         context_schema=Context
     )
     ```
-  </Tab>
-</Tabs>
 
 ### Messages
 
 Messages make up the prompt that is sent to the LLM.
 It's critical to manage the content of messages to ensure that the LLM has the right information to respond well.
 
-<Tabs>
-  <Tab title="State">
     Inject uploaded file context from State when relevant to current query:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents import create_agent
     from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
     from typing import Callable
@@ -241,7 +214,7 @@ It's critical to manage the content of messages to ensure that the LLM has the r
     ) -> ModelResponse:
         """Inject context about files user has uploaded this session."""
         # Read from State: get uploaded files metadata
-        uploaded_files = request.state.get("uploaded_files", [])  # [!code highlight]
+        uploaded_files = request.state.get("uploaded_files", [])
 
         if uploaded_files:
             # Build context about available files
@@ -257,11 +230,11 @@ It's critical to manage the content of messages to ensure that the LLM has the r
     Reference these files when answering questions."""
 
             # Inject file context before recent messages
-            messages = [  # [!code highlight]
+            messages = [
                 *request.messages,
                 {"role": "user", "content": file_context},
             ]
-            request = request.override(messages=messages)  # [!code highlight]
+            request = request.override(messages=messages)
 
         return handler(request)
 
@@ -271,12 +244,10 @@ It's critical to manage the content of messages to ensure that the LLM has the r
         middleware=[inject_file_context]
     )
     ```
-  </Tab>
 
-  <Tab title="Store">
     Inject user's email writing style from Store to guide drafting:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from dataclasses import dataclass
     from langchain.agents import create_agent
     from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
@@ -293,11 +264,11 @@ It's critical to manage the content of messages to ensure that the LLM has the r
         handler: Callable[[ModelRequest], ModelResponse]
     ) -> ModelResponse:
         """Inject user's email writing style from Store."""
-        user_id = request.runtime.context.user_id  # [!code highlight]
+        user_id = request.runtime.context.user_id
 
         # Read from Store: get user's writing style examples
-        store = request.runtime.store  # [!code highlight]
-        writing_style = store.get(("writing_style",), user_id)  # [!code highlight]
+        store = request.runtime.store
+        writing_style = store.get(("writing_style",), user_id)
 
         if writing_style:
             style = writing_style.value
@@ -314,7 +285,7 @@ It's critical to manage the content of messages to ensure that the LLM has the r
                 *request.messages,
                 {"role": "user", "content": style_context}
             ]
-            request = request.override(messages=messages)  # [!code highlight]
+            request = request.override(messages=messages)
 
         return handler(request)
 
@@ -326,12 +297,10 @@ It's critical to manage the content of messages to ensure that the LLM has the r
         store=InMemoryStore()
     )
     ```
-  </Tab>
 
-  <Tab title="Runtime Context">
     Inject compliance rules from Runtime Context based on user's jurisdiction:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from dataclasses import dataclass
     from langchain.agents import create_agent
     from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
@@ -350,9 +319,9 @@ It's critical to manage the content of messages to ensure that the LLM has the r
     ) -> ModelResponse:
         """Inject compliance constraints from Runtime Context."""
         # Read from Runtime Context: get compliance requirements
-        jurisdiction = request.runtime.context.user_jurisdiction  # [!code highlight]
-        industry = request.runtime.context.industry  # [!code highlight]
-        frameworks = request.runtime.context.compliance_frameworks  # [!code highlight]
+        jurisdiction = request.runtime.context.user_jurisdiction
+        industry = request.runtime.context.industry
+        frameworks = request.runtime.context.compliance_frameworks
 
         # Build compliance constraints
         rules = []
@@ -374,7 +343,7 @@ It's critical to manage the content of messages to ensure that the LLM has the r
                 *request.messages,
                 {"role": "user", "content": compliance_context}
             ]
-            request = request.override(messages=messages)  # [!code highlight]
+            request = request.override(messages=messages)
 
         return handler(request)
 
@@ -385,21 +354,17 @@ It's critical to manage the content of messages to ensure that the LLM has the r
         context_schema=Context
     )
     ```
-  </Tab>
-</Tabs>
 
-<Note>
-  **Transient vs Persistent Message Updates:**
+**Transient vs Persistent Message Updates:**
 
-  The examples above use `wrap_model_call` to make **transient** updates - modifying what messages are sent to the model for a single call without changing what's saved in state.
+The examples above use `wrap_model_call` to make **transient** updates - modifying what messages are sent to the model for a single call without changing what's saved in state.
 
-  For **persistent** updates that modify state, you can:
+For **persistent** updates that modify state, you can:
 
-  * Return a [`ExtendedModelResponse`](https://reference.langchain.com/python/langchain/agents/middleware/types/ExtendedModelResponse) with a [`Command`](https://reference.langchain.com/python/langgraph/types/Command) from `wrap_model_call` to inject state updates from the model call layer.
-  * Use life-cycle hooks like `before_model`, `after_model`, or `wrap_tool_call` (for tool returns) to update the conversation history. See the [middleware documentation](/oss/python/langchain/middleware) for more details.
+* Return a `ExtendedModelResponse` with a `Command` from `wrap_model_call` to inject state updates from the model call layer.
+* Use life-cycle hooks like `before_model`, `after_model`, or `wrap_tool_call` (for tool returns) to update the conversation history. See the middleware documentation for more details.
 
-  See [State updates](/oss/python/langchain/middleware/custom#state-updates) for more information.
-</Note>
+See State updates for more information.
 
 ### Tools
 
@@ -409,7 +374,7 @@ Tools let the model interact with databases, APIs, and external systems. How you
 
 Each tool needs a clear name, description, argument names, and argument descriptions. These aren't just metadata—they guide the model's reasoning about when and how to use the tool.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.tools import tool
 
 @tool(parse_docstring=True)
@@ -436,11 +401,9 @@ def search_orders(
 
 Not every tool is appropriate for every situation. Too many tools may overwhelm the model (overload context) and increase errors; too few limit capabilities. Dynamic tool selection adapts the available toolset based on authentication state, user permissions, feature flags, or conversation stage.
 
-<Tabs>
-  <Tab title="State">
     Enable advanced tools only after certain conversation milestones:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents import create_agent
     from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
     from typing import Callable
@@ -452,18 +415,18 @@ Not every tool is appropriate for every situation. Too many tools may overwhelm 
     ) -> ModelResponse:
         """Filter tools based on conversation State."""
         # Read from State: check if user has authenticated
-        state = request.state  # [!code highlight]
-        is_authenticated = state.get("authenticated", False)  # [!code highlight]
+        state = request.state
+        is_authenticated = state.get("authenticated", False)
         message_count = len(state["messages"])
 
         # Only enable sensitive tools after authentication
         if not is_authenticated:
             tools = [t for t in request.tools if t.name.startswith("public_")]
-            request = request.override(tools=tools)  # [!code highlight]
+            request = request.override(tools=tools)
         elif message_count < 5:
             # Limit tools early in conversation
             tools = [t for t in request.tools if t.name != "advanced_search"]
-            request = request.override(tools=tools)  # [!code highlight]
+            request = request.override(tools=tools)
 
         return handler(request)
 
@@ -473,12 +436,10 @@ Not every tool is appropriate for every situation. Too many tools may overwhelm 
         middleware=[state_based_tools]
     )
     ```
-  </Tab>
 
-  <Tab title="Store">
     Filter tools based on user preferences or feature flags in Store:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from dataclasses import dataclass
     from langchain.agents import create_agent
     from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
@@ -517,12 +478,10 @@ Not every tool is appropriate for every situation. Too many tools may overwhelm 
         store=InMemoryStore()
     )
     ```
-  </Tab>
 
-  <Tab title="Runtime Context">
     Filter tools based on user permissions from Runtime Context:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from dataclasses import dataclass
     from langchain.agents import create_agent
     from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
@@ -562,21 +521,17 @@ Not every tool is appropriate for every situation. Too many tools may overwhelm 
         context_schema=Context
     )
     ```
-  </Tab>
-</Tabs>
 
-See [Dynamic tools](/oss/python/langchain/tools#dynamic-tool-selection) for both filtering pre-registered tools and registering tools at runtime (e.g., from MCP servers).
+See Dynamic tools for both filtering pre-registered tools and registering tools at runtime (e.g., from MCP servers).
 
 ### Model
 
 Different models have different strengths, costs, and context windows. Select the right model for the task at hand, which
 might change during an agent run.
 
-<Tabs>
-  <Tab title="State">
     Use different models based on conversation length from State:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents import create_agent
     from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
     from langchain.chat_models import init_chat_model
@@ -594,7 +549,7 @@ might change during an agent run.
     ) -> ModelResponse:
         """Select model based on State conversation length."""
         # request.messages is a shortcut for request.state["messages"]
-        message_count = len(request.messages)  # [!code highlight]
+        message_count = len(request.messages)
 
         if message_count > 20:
             # Long conversation - use model with larger context window
@@ -606,7 +561,7 @@ might change during an agent run.
             # Short conversation - use efficient model
             model = efficient_model
 
-        request = request.override(model=model)  # [!code highlight]
+        request = request.override(model=model)
 
         return handler(request)
 
@@ -616,12 +571,10 @@ might change during an agent run.
         middleware=[state_based_model]
     )
     ```
-  </Tab>
 
-  <Tab title="Store">
     Use user's preferred model from Store:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from dataclasses import dataclass
     from langchain.agents import create_agent
     from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
@@ -667,12 +620,10 @@ might change during an agent run.
         store=InMemoryStore()
     )
     ```
-  </Tab>
 
-  <Tab title="Runtime Context">
     Select model based on cost limits or environment from Runtime Context:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from dataclasses import dataclass
     from langchain.agents import create_agent
     from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
@@ -720,10 +671,8 @@ might change during an agent run.
         context_schema=Context
     )
     ```
-  </Tab>
-</Tabs>
 
-See [Dynamic model](/oss/python/langchain/models#dynamic-model-selection) for more examples.
+See Dynamic model for more examples.
 
 ### Response format
 
@@ -735,7 +684,7 @@ Structured output transforms unstructured text into validated, structured data. 
 
 Schema definitions guide the model. Field names, types, and descriptions specify exactly what format the output should adhere to.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from pydantic import BaseModel, Field
 
 class CustomerSupportTicket(BaseModel):
@@ -759,11 +708,9 @@ class CustomerSupportTicket(BaseModel):
 
 Dynamic response format selection adapts schemas based on user preferences, conversation stage, or role—returning simple formats early and detailed formats as complexity increases.
 
-<Tabs>
-  <Tab title="State">
     Configure structured output based on conversation state:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents import create_agent
     from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
     from pydantic import BaseModel, Field
@@ -786,14 +733,14 @@ Dynamic response format selection adapts schemas based on user preferences, conv
     ) -> ModelResponse:
         """Select output format based on State."""
         # request.messages is a shortcut for request.state["messages"]
-        message_count = len(request.messages)  # [!code highlight]
+        message_count = len(request.messages)
 
         if message_count < 3:
             # Early conversation - use simple format
-            request = request.override(response_format=SimpleResponse)  # [!code highlight]
+            request = request.override(response_format=SimpleResponse)
         else:
             # Established conversation - use detailed format
-            request = request.override(response_format=DetailedResponse)  # [!code highlight]
+            request = request.override(response_format=DetailedResponse)
 
         return handler(request)
 
@@ -803,12 +750,10 @@ Dynamic response format selection adapts schemas based on user preferences, conv
         middleware=[state_based_output]
     )
     ```
-  </Tab>
 
-  <Tab title="Store">
     Configure output format based on user preferences in Store:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from dataclasses import dataclass
     from langchain.agents import create_agent
     from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
@@ -858,12 +803,10 @@ Dynamic response format selection adapts schemas based on user preferences, conv
         store=InMemoryStore()
     )
     ```
-  </Tab>
 
-  <Tab title="Runtime Context">
     Configure output format based on Runtime Context like user role or environment:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from dataclasses import dataclass
     from langchain.agents import create_agent
     from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
@@ -911,8 +854,6 @@ Dynamic response format selection adapts schemas based on user preferences, conv
         context_schema=Context
     )
     ```
-  </Tab>
-</Tabs>
 
 ## Tool context
 
@@ -926,11 +867,9 @@ Tools can also fetch important information for the model that allows it to perfo
 
 Most real-world tools need more than just the LLM's parameters. They need user IDs for database queries, API keys for external services, or current session state to make decisions. Tools read from state, store, and runtime context to access this information.
 
-<Tabs>
-  <Tab title="State">
     Read from State to check current session information:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.tools import tool, ToolRuntime
     from langchain.agents import create_agent
 
@@ -953,12 +892,10 @@ Most real-world tools need more than just the LLM's parameters. They need user I
         tools=[check_authentication]
     )
     ```
-  </Tab>
 
-  <Tab title="Store">
     Read from Store to access persisted user preferences:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from dataclasses import dataclass
     from langchain.tools import tool, ToolRuntime
     from langchain.agents import create_agent
@@ -993,12 +930,10 @@ Most real-world tools need more than just the LLM's parameters. They need user I
         store=InMemoryStore()
     )
     ```
-  </Tab>
 
-  <Tab title="Runtime Context">
     Read from Runtime Context for configuration like API keys and user IDs:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from dataclasses import dataclass
     from langchain.tools import tool, ToolRuntime
     from langchain.agents import create_agent
@@ -1041,19 +976,15 @@ Most real-world tools need more than just the LLM's parameters. They need user I
         )
     )
     ```
-  </Tab>
-</Tabs>
 
 ### Writes
 
 Tool results can be used to help an agent complete a given task. Tools can both return results directly to the model
 and update the memory of the agent to make important context available to future steps.
 
-<Tabs>
-  <Tab title="State">
     Write to State to track session-specific information using Command:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.tools import tool, ToolRuntime
     from langchain.agents import create_agent
     from langgraph.types import Command
@@ -1078,12 +1009,10 @@ and update the memory of the agent to make important context available to future
         tools=[authenticate_user]
     )
     ```
-  </Tab>
 
-  <Tab title="Store">
     Write to Store to persist data across sessions:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from dataclasses import dataclass
     from langchain.tools import tool, ToolRuntime
     from langchain.agents import create_agent
@@ -1122,31 +1051,25 @@ and update the memory of the agent to make important context available to future
         store=InMemoryStore()
     )
     ```
-  </Tab>
-</Tabs>
 
-See [Tools](/oss/python/langchain/tools) for comprehensive examples of accessing state, store, and runtime context in tools.
+See Tools for comprehensive examples of accessing state, store, and runtime context in tools.
 
 ## Life-cycle context
 
 Control what happens **between** the core agent steps - intercepting data flow to implement cross-cutting concerns like summarization, guardrails, and logging.
 
-As you've seen in [Model Context](#model-context) and [Tool Context](#tool-context), [middleware](/oss/python/langchain/middleware) is the mechanism that makes context engineering practical. Middleware allows you to hook into any step in the agent lifecycle and either:
+As you've seen in Model Context and Tool Context, middleware is the mechanism that makes context engineering practical. Middleware allows you to hook into any step in the agent lifecycle and either:
 
 1. **Update context** - Modify state and store to persist changes, update conversation history, or save insights
 2. **Jump in the lifecycle** - Move to different steps in the agent cycle based on context (e.g., skip tool execution if a condition is met, repeat model call with modified context)
 
-<div style={{ display: "flex", justifyContent: "center" }}>
-  <img src="https://mintcdn.com/langchain-5e9cc07a/RAP6mjwE5G00xYsA/oss/images/middleware_final.png?fit=max&auto=format&n=RAP6mjwE5G00xYsA&q=85&s=eb4404b137edec6f6f0c8ccb8323eaf1" alt="Middleware hooks in the agent loop" className="rounded-lg" width="500" height="560" data-path="oss/images/middleware_final.png" />
-</div>
-
 ### Example: Summarization
 
-One of the most common life-cycle patterns is automatically condensing conversation history when it gets too long. Unlike the transient message trimming shown in [Model Context](#messages), summarization **persistently updates state** - permanently replacing old messages with a summary that's saved for all future turns.
+One of the most common life-cycle patterns is automatically condensing conversation history when it gets too long. Unlike the transient message trimming shown in Model Context, summarization **persistently updates state** - permanently replacing old messages with a summary that's saved for all future turns.
 
 LangChain offers built-in middleware for this:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import SummarizationMiddleware
 
@@ -1171,25 +1094,23 @@ When the conversation exceeds the token limit, `SummarizationMiddleware` automat
 
 The summarized conversation history is permanently updated - future turns will see the summary instead of the original messages.
 
-<Note>
-  For a complete list of built-in middleware, available hooks, and how to create custom middleware, see the [Middleware documentation](/oss/python/langchain/middleware).
-</Note>
+For a complete list of built-in middleware, available hooks, and how to create custom middleware, see the Middleware documentation.
 
 ## Best practices
 
 1. **Start simple** - Begin with static prompts and tools, add dynamics only when needed
 2. **Test incrementally** - Add one context engineering feature at a time
 3. **Monitor performance** - Track model calls, token usage, and latency
-4. **Use built-in middleware** - Leverage [`SummarizationMiddleware`](/oss/python/langchain/middleware#summarization), [`LLMToolSelectorMiddleware`](/oss/python/langchain/middleware#llm-tool-selector), etc.
+4. **Use built-in middleware** - Leverage `SummarizationMiddleware`, `LLMToolSelectorMiddleware`, etc.
 5. **Document your context strategy** - Make it clear what context is being passed and why
 6. **Understand transient vs persistent**: Model context changes are transient (per-call), while life-cycle context changes persist to state
 
 ## Related resources
 
-* [Context conceptual overview](/oss/python/concepts/context) - Understand context types and when to use them
-* [Middleware](/oss/python/langchain/middleware) - Complete middleware guide
-* [Tools](/oss/python/langchain/tools) - Tool creation and context access
-* [Memory](/oss/python/concepts/memory) - Short-term and long-term memory patterns
-* [Agents](/oss/python/langchain/agents) - Core agent concepts
+* Context conceptual overview - Understand context types and when to use them
+* Middleware - Complete middleware guide
+* Tools - Tool creation and context access
+* Memory - Short-term and long-term memory patterns
+* Agents - Core agent concepts
 
 ***

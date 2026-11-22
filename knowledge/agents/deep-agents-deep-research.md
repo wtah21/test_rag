@@ -11,7 +11,7 @@ url: https://docs.langchain.com/oss/python/deepagents/deep-research
 
 ## Overview
 
-This guide demonstrates how to build a multi-step web research agent from scratch using [Deep Agents](/oss/python/deepagents). The agent decomposes research questions into focused tasks, delegates them to specialized sub-agents, and synthesizes findings into a comprehensive report.
+This guide demonstrates how to build a multi-step web research agent from scratch using Deep Agents. The agent decomposes research questions into focused tasks, delegates them to specialized sub-agents, and synthesizes findings into a comprehensive report.
 
 The agent you build will:
 
@@ -26,90 +26,70 @@ The spawned sub-agents will conduct web searches with Tavily, fetching full webp
 
 This tutorial covers:
 
-* [Subagents](/oss/python/deepagents/subagents) for parallel, context-isolated research
-* Custom [tools](/oss/python/langchain/tools) for web search
-* Multi-step planning with the opt-in [planning tool](/oss/python/deepagents/overview#task-planning)
+* Subagents for parallel, context-isolated research
+* Custom tools for web search
+* Multi-step planning with the opt-in planning tool
 
 ## Prerequisites
 
 API keys for:
 
 * Anthropic (Claude) or Google (Gemini)
-* [Tavily](https://www.tavily.com/) for web search (optional - free tier sufficient)
-* [LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-deepagents-deep-research) for tracing (optional)
+* Tavily for web search (optional - free tier sufficient)
+* LangSmith for tracing (optional)
 
 ## Setup
 
-<Steps>
-  <Step title="Create project directory">
-    ```bash theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Create project directory
+    ```bash
     mkdir deep-research-agent
     cd deep-research-agent
     ```
-  </Step>
 
-  <Step title="Install dependencies">
-    <Tabs>
-      <Tab title="Claude">
-        <CodeGroup>
-          ```bash pip wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Install dependencies
+
+          ```bash pip wrap
           pip install deepagents tavily-python httpx markdownify langchain-anthropic langchain-core
           ```
 
-          ```bash uv wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+          ```bash uv wrap
           uv init
           uv add deepagents tavily-python httpx markdownify langchain-anthropic langchain-core
           uv sync
           ```
-        </CodeGroup>
-      </Tab>
 
-      <Tab title="Gemini">
-        <CodeGroup>
-          ```bash pip wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+          ```bash pip wrap
           pip install deepagents tavily-python httpx markdownify langchain-google-genai langchain-core
           ```
 
-          ```bash uv wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+          ```bash uv wrap
           uv init
           uv add deepagents tavily-python httpx markdownify langchain-google-genai langchain-core
           uv sync
           ```
-        </CodeGroup>
-      </Tab>
-    </Tabs>
-  </Step>
 
-  <Step title="Set API keys">
-    <Tabs>
-      <Tab title="Claude">
-        ```bash theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Set API keys
+
+        ```bash
         export ANTHROPIC_API_KEY="your_anthropic_api_key"
         export TAVILY_API_KEY="your_tavily_api_key"
         export LANGSMITH_API_KEY="your_langsmith_api_key"   # Optional
         ```
-      </Tab>
 
-      <Tab title="Gemini">
-        ```bash theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+        ```bash
         export GOOGLE_API_KEY="your_google_api_key"
         export TAVILY_API_KEY="your_tavily_api_key"
         export LANGSMITH_API_KEY="your_langsmith_api_key"   # Optional
         ```
-      </Tab>
-    </Tabs>
-  </Step>
-</Steps>
 
 ## Build the agent
 
 Create `agent.py` in your project directory:
 
-<Steps>
-  <Step title="Add tools">
+Add tools
     Add the custom search tool. The `tavily_search` tool uses Tavily for URL discovery, then fetches full webpage content so the agent can analyze complete sources instead of summaries.
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     import os
     from typing import Annotated, Literal
 
@@ -170,12 +150,11 @@ Create `agent.py` in your project directory:
             result_texts
         )
     ```
-  </Step>
 
-  <Step title="Add prompts">
+Add prompts
     Add the orchestrator workflow and sub-agent prompt templates to `agent.py`:
 
-    ```python expandable wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python expandable wrap
     RESEARCH_WORKFLOW_INSTRUCTIONS = """# Research Workflow
 
     Follow this workflow for all research requests:
@@ -241,7 +220,7 @@ Create `agent.py` in your project directory:
     """
     ```
 
-    ```python expandable wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python expandable wrap
     RESEARCHER_INSTRUCTIONS = """You are a research assistant conducting research on the user's input topic. For context, today's date is {date}.
 
     Your job is to use tools to gather information about the user's input topic.
@@ -288,7 +267,7 @@ Create `agent.py` in your project directory:
     """
     ```
 
-    ```python expandable wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python expandable wrap
     SUBAGENT_DELEGATION_INSTRUCTIONS = """# Sub-Agent Research Coordination
 
     Your role is to coordinate research by delegating tasks from your TODO list to specialized research sub-agents.
@@ -326,24 +305,20 @@ Create `agent.py` in your project directory:
     - Stop when you have sufficient information to answer comprehensively
     - Bias towards focused research over exhaustive exploration"""
     ```
-  </Step>
 
-  <Step title="Enable task planning">
-    [Task planning](/oss/python/deepagents/overview#task-planning) is opt-in. The research workflow uses `write_todos` to break questions into focused tasks, so pass [`TodoListMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/todo/TodoListMiddleware) when you create the agent.
+Enable task planning
+    Task planning is opt-in. The research workflow uses `write_todos` to break questions into focused tasks, so pass `TodoListMiddleware` when you create the agent.
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.agents.middleware import TodoListMiddleware
     ```
 
     You include this middleware in the next step when you create the agent.
-  </Step>
 
-  <Step title="Create the agent">
-    Add the model initialization and agent creation to `agent.py`. Choose your provider. Include [`TodoListMiddleware`](https://reference.langchain.com/python/langchain/agents/middleware/todo/TodoListMiddleware) so the planning tool is available:
+Create the agent
+    Add the model initialization and agent creation to `agent.py`. Choose your provider. Include `TodoListMiddleware` so the planning tool is available:
 
-    <Tabs>
-      <Tab title="Claude">
-        ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+        ```python
         from datetime import datetime
 
         from deepagents import create_deep_agent
@@ -383,10 +358,8 @@ Create `agent.py` in your project directory:
             middleware=[TodoListMiddleware()],
         )
         ```
-      </Tab>
 
-      <Tab title="Gemini">
-        ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+        ```python
         from datetime import datetime
 
         from deepagents import create_deep_agent
@@ -426,10 +399,6 @@ Create `agent.py` in your project directory:
             middleware=[TodoListMiddleware()],
         )
         ```
-      </Tab>
-    </Tabs>
-  </Step>
-</Steps>
 
 ## Run the agent
 
@@ -437,9 +406,7 @@ You can run the agent synchronously, meaning it will wait for the full result an
 
 Add the code from the respective tab at the bottom of `agent.py`:
 
-<Tabs>
-  <Tab title="Run synchronously" value="sync">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.messages import HumanMessage
 
     if __name__ == "__main__":
@@ -457,10 +424,8 @@ Add the code from the respective tab at the bottom of `agent.py`:
             if hasattr(msg, "content") and msg.content:
                 print(msg.content)
     ```
-  </Tab>
 
-  <Tab title="Stream updates" value="stream">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.messages import HumanMessage
 
     if __name__ == "__main__":
@@ -476,20 +441,18 @@ Add the code from the respective tab at the bottom of `agent.py`:
             for token in message.text:
                 print(token, end="", flush=True)
     ```
-  </Tab>
-</Tabs>
 
 Run the agent from the project root:
 
-```sh theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```sh
 python agent.py
 ```
 
-If you set the `LANGSMITH_API_KEY` environment variable before running, you can view the agent's traces in [LangSmith](/langsmith/observability) to debug and monitor multi-step behavior.
+If you set the `LANGSMITH_API_KEY` environment variable before running, you can view the agent's traces in LangSmith to debug and monitor multi-step behavior.
 
 ## Full code
 
-View the complete [Deep Research example](https://github.com/langchain-ai/deepagents/tree/main/examples/deep_research) on GitHub.
+View the complete Deep Research example on GitHub.
 
 ## Next steps
 
@@ -498,9 +461,9 @@ You can also tune the delegation limits to allow for more parallel sub-agents or
 
 For more information on the concepts in this tutorial, check out the following resources:
 
-* [Subagents](/oss/python/deepagents/subagents): Learn how to configure subagents with different tools and prompts
-* [Customization](/oss/python/deepagents/customization): Customize models, tools, system prompts, and optional [task planning](/oss/python/deepagents/overview#task-planning)
-* [LangSmith](/langsmith/observability): Trace research runs and debug multi-step behavior
-* [Deep Research Course](https://academy.langchain.com/courses/deep-research-with-langgraph): Full course on deep research with LangGraph
+* Subagents: Learn how to configure subagents with different tools and prompts
+* Customization: Customize models, tools, system prompts, and optional task planning
+* LangSmith: Trace research runs and debug multi-step behavior
+* Deep Research Course: Full course on deep research with LangGraph
 
 ***

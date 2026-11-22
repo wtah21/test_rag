@@ -11,7 +11,7 @@ url: https://docs.langchain.com/oss/python/concepts/providers-and-models
 
 LangChain gives you a single, unified API to work with models from any provider. Install a provider package, pick a model name, and start building—the same code works whether you use OpenAI, Anthropic, Google, or any other supported provider.
 
-```mermaid theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```mermaid
 graph LR
     subgraph "Your code"
         A["LangChain API<br/>(invoke, stream, bind_tools)"]
@@ -44,9 +44,9 @@ Every LangChain chat model, regardless of provider, implements the same interfac
 
 * **Swap providers** without rewriting application logic
 * **Compare models** side-by-side with identical code
-* **Use advanced features** like [tool calling](/oss/python/langchain/tools), [structured output](/oss/python/langchain/structured-output), and [streaming](/oss/python/langchain/streaming) across all providers
+* **Use advanced features** like tool calling, structured output, and streaming across all providers
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.chat_models import init_chat_model
 
 openai_model = init_chat_model("openai:gpt-5.5")
@@ -68,50 +68,48 @@ In LangChain, each provider has a dedicated **integration package** (for example
 * **Provider-specific features** are available when you need them (for example OpenAI's Responses API, Anthropic's extended thinking)
 * **Automatic API key handling** through environment variables
 
-```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```shell
 uv add langchain-openai       # For OpenAI models
 uv add langchain-anthropic    # For Anthropic models
 uv add langchain-google-genai # For Google models
 ```
 
-For a full list of provider packages, see the [integrations page](/oss/python/integrations/providers/overview).
+For a full list of provider packages, see the integrations page.
 
 ## Find model names
 
 Each provider supports specific model names that you pass when initializing a chat model. There are two ways to specify a model:
 
-<CodeGroup>
-  ```python Provider prefix format theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Provider prefix format
   from langchain.chat_models import init_chat_model
 
   model = init_chat_model("openai:gpt-5.5")
   ```
 
-  ```python Direct class instantiation theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Direct class instantiation
   from langchain_openai import ChatOpenAI
 
   model = ChatOpenAI(model="gpt-5.5")
   ```
-</CodeGroup>
 
-When using [`init_chat_model`](https://reference.langchain.com/python/langchain/chat_models/base/init_chat_model) with the `provider:model` format, LangChain automatically resolves the provider and loads the correct integration package. You can also omit the provider prefix if the model name is unambiguous (e.g., `"gpt-5.5"` resolves to OpenAI).
+When using `init_chat_model` with the `provider:model` format, LangChain automatically resolves the provider and loads the correct integration package. You can also omit the provider prefix if the model name is unambiguous (e.g., `"gpt-5.5"` resolves to OpenAI).
 
 To find available model names for a provider, refer to the provider's own documentation. Here are some popular providers:
 
 | Provider                                                  | Where to find model names                                                                              |
 | :-------------------------------------------------------- | :----------------------------------------------------------------------------------------------------- |
-| [OpenAI](/oss/python/integrations/providers/openai)       | [OpenAI models page](https://platform.openai.com/docs/models)                                          |
-| [Anthropic](/oss/python/integrations/providers/anthropic) | [Anthropic models page](https://docs.anthropic.com/en/docs/about-claude/models)                        |
-| [Google](/oss/python/integrations/providers/google)       | [Google AI models page](https://ai.google.dev/gemini-api/docs/models)                                  |
-| [AWS Bedrock](/oss/python/integrations/providers/aws)     | [Bedrock supported models](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html) |
-| [Ollama](/oss/python/integrations/providers/ollama)       | [Ollama model library](https://ollama.com/library)                                                     |
-| [Groq](/oss/python/integrations/providers/groq)           | [Groq supported models](https://console.groq.com/docs/models)                                          |
+| OpenAI       | OpenAI models page                                          |
+| Anthropic | Anthropic models page                        |
+| Google       | Google AI models page                                  |
+| AWS Bedrock     | Bedrock supported models |
+| Ollama       | Ollama model library                                                     |
+| Groq           | Groq supported models                                          |
 
 ## Use new models immediately
 
 Because LangChain provider packages pass model names directly to the provider's API, you can use new models the moment a provider releases them (no LangChain update required). Simply pass the new model name:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 model = init_chat_model("google_genai:gemini-mythos")
 ```
 
@@ -120,7 +118,7 @@ New model names work immediately as long as your provider package version suppor
 ## Model capabilities
 
 Different providers and models support different features.
-For a list of the chat model integrations and their capabilities, see the [chat models integrations page](/oss/python/integrations/chat).
+For a list of the chat model integrations and their capabilities, see the chat models integrations page.
 
 ## Routers and proxies
 
@@ -128,9 +126,9 @@ For a list of the chat model integrations and their capabilities, see the [chat 
 
 | Provider                             | Integration                                                  | Description                                                                      |
 | :----------------------------------- | :----------------------------------------------------------- | :------------------------------------------------------------------------------- |
-| [OpenRouter](https://openrouter.ai/) | [`ChatOpenRouter`](/oss/python/integrations/chat/openrouter) | Unified access to models from OpenAI, Anthropic, Google, Meta, and more          |
-| [FuturMix](https://futurmix.ai/)     | [`ChatOpenAI`](https://futurmix.ai/)                         | Unified AI gateway for 22+ models with OpenAI-compatible API and 99.99% SLA      |
-| [LiteLLM](https://www.litellm.ai/)   | [`ChatLiteLLM`](/oss/python/integrations/chat/litellm)       | Unified interface for 100+ providers with routing, fallbacks, and spend tracking |
+| OpenRouter | `ChatOpenRouter` | Unified access to models from OpenAI, Anthropic, Google, Meta, and more          |
+| FuturMix     | `ChatOpenAI`                         | Unified AI gateway for 22+ models with OpenAI-compatible API and 99.99% SLA      |
+| LiteLLM   | `ChatLiteLLM`       | Unified interface for 100+ providers with routing, fallbacks, and spend tracking |
 
 Routers are useful when you want to:
 
@@ -138,7 +136,7 @@ Routers are useful when you want to:
 * **Switch models dynamically** without managing multiple provider credentials
 * **Use fallback models** that automatically retry with a different model if the primary one fails
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.chat_models import init_chat_model
 
 model = init_chat_model("openrouter:anthropic/claude-sonnet-4-6")
@@ -147,9 +145,9 @@ response = model.invoke("Hello!")
 
 ## OpenAI-compatible endpoints
 
-Many providers offer endpoints compatible with OpenAI's [Chat Completions API](https://platform.openai.com/docs/api-reference/chat). You can connect to these using [`ChatOpenAI`](/oss/python/integrations/chat/openai) with a custom `base_url`:
+Many providers offer endpoints compatible with OpenAI's Chat Completions API. You can connect to these using `ChatOpenAI` with a custom `base_url`:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_openai import ChatOpenAI
 
 model = ChatOpenAI(
@@ -159,28 +157,20 @@ model = ChatOpenAI(
 )
 ```
 
-<Warning>
-  `ChatOpenAI` targets [official OpenAI API specifications](https://github.com/openai/openai-openapi) only. Non-standard response fields from third-party providers are not extracted or preserved. Use a dedicated provider package or router when you need access to non-standard features.
-</Warning>
+`ChatOpenAI` targets official OpenAI API specifications only. Non-standard response fields from third-party providers are not extracted or preserved. Use a dedicated provider package or router when you need access to non-standard features.
 
 ## Next steps
 
-<CardGroup cols={2}>
-  <Card title="Models guide" icon="cpu" href="/oss/python/langchain/models">
+Models guide
     Learn how to use models: invoke, stream, batch, tool calling, and more.
-  </Card>
 
-  <Card title="Chat model integrations" icon="message" href="/oss/python/integrations/chat">
+Chat model integrations
     Browse all chat model integrations and their capabilities.
-  </Card>
 
-  <Card title="All providers" icon="grid-dots" href="/oss/python/integrations/providers/overview">
+All providers
     See the full list of provider packages and integrations.
-  </Card>
 
-  <Card title="Agents" icon="robot" href="/oss/python/langchain/agents">
+Agents
     Build agents that use models as their reasoning engine.
-  </Card>
-</CardGroup>
 
 ***

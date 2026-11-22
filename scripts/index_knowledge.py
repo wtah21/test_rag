@@ -3,7 +3,7 @@
 流程：
 1. 扫描并加载 knowledge/**/*.md
 2. 解析每个文档的 YAML frontmatter（title / source / category / url）
-3. 基于文档结构（Markdown 标题层级）分块：按 ## 与 ### 标题切分，保留标题层级链
+3. 基于文档结构（Markdown 标题层级）分块：按 H1~H4 标题切分，保留标题层级链
 4. 超长块按 Markdown 分隔符二次切分，控制块大小
 5. 生成双路向量：
    - 稠密向量：硅基流动 BGE-M3（OpenAI 兼容接口，1024 维）
@@ -52,8 +52,8 @@ from shared.retrieval import make_text_encoder  # noqa: E402
 KNOWLEDGE_DIR = ROOT / "knowledge"
 DENSE_EMBEDDING_MODEL = "siliconflow/BAAI/bge-m3"
 
-# 基于文档结构分块：以 ## / ### 标题为切分点，标题链写入块元数据
-HEADERS_TO_SPLIT = [("##", "H2"), ("###", "H3")]
+# 基于文档结构分块：以 H1~H4 标题为切分点，标题链写入块元数据
+HEADERS_TO_SPLIT = [("#", "H1"), ("##", "H2"), ("###", "H3"), ("####", "H4")]
 CHUNK_SIZE = 800
 CHUNK_OVERLAP = 80
 
@@ -113,7 +113,7 @@ def load_documents() -> list[Document]:
             print(f"  跳过空文档: {path.relative_to(KNOWLEDGE_DIR)}")
             continue
 
-        # 基于标题层级切分：每个块继承所在标题层级链（H2/H3）
+        # 基于标题层级切分：每个块继承所在标题层级链（H1~H4）
         chunks = splitter.split_text(body)
         refined: list[Document] = []
         for chunk in chunks:

@@ -20,19 +20,16 @@ A **knowledge base** is a repository of documents or structured data used during
 
 If you need a custom knowledge base, you can use LangChain’s document loaders and vector stores to build one from your own data.
 
-<Note>
-  If you already have a knowledge base (for example a SQL database, a document database, a CRM, or an internal documentation system), you do **not** need to rebuild it. You can:
+If you already have a knowledge base (for example a SQL database, a document database, a CRM, or an internal documentation system), you do **not** need to rebuild it. You can:
 
-  * Connect it as a **tool** for an agent in Agentic RAG.
-  * Query it and supply the retrieved content as context to the LLM [(2-Step RAG)](#2-step-rag).
-</Note>
+* Connect it as a **tool** for an agent in Agentic RAG.
+* Query it and supply the retrieved content as context to the LLM (2-Step RAG).
 
 For more information, see the following tutorial to build a searchable knowledge base and minimal RAG workflow:
 
-<Card title="Tutorial: Semantic search" icon="database" href="/oss/python/langchain/knowledge-base" arrow cta="Learn more">
-  Learn how to create a searchable knowledge base from your own data using LangChain’s document loaders, embeddings, and vector stores.
-  In this tutorial, you’ll build a search engine over a PDF, enabling retrieval of passages relevant to a query. You’ll also implement a minimal RAG workflow on top of this engine to see how external knowledge can be integrated into LLM reasoning.
-</Card>
+Tutorial: Semantic search
+Learn how to create a searchable knowledge base from your own data using LangChain’s document loaders, embeddings, and vector stores.
+In this tutorial, you’ll build a search engine over a PDF, enabling retrieval of passages relevant to a query. You’ll also implement a minimal RAG workflow on top of this engine to see how external knowledge can be integrated into LLM reasoning.
 
 ### From retrieval to RAG
 
@@ -44,7 +41,7 @@ This is the core idea behind **Retrieval-Augmented Generation (RAG)**. The retri
 
 A typical retrieval workflow looks like this:
 
-```mermaid actions={true} theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```mermaid actions={true}
 %%{init: {'flowchart': {'nodeSpacing': 12, 'rankSpacing': 18, 'padding': 4}, 'themeVariables': {'fontSize': '12px'}}}%%
 flowchart TB
   subgraph ingest[" "]
@@ -76,27 +73,20 @@ Each component is modular: you can swap loaders, splitters, embeddings, or vecto
 
 ### Building blocks
 
-<Columns cols={2}>
-  <Card title="Document loaders" icon="file-import" href="/oss/python/integrations/document_loaders" arrow cta="Learn more">
-    Ingest data from external sources (Google Drive, Slack, Notion, etc.), returning standardized [`Document`](https://reference.langchain.com/python/langchain-core/documents/base/Document) objects.
-  </Card>
+Document loaders
+    Ingest data from external sources (Google Drive, Slack, Notion, etc.), returning standardized `Document` objects.
 
-  <Card title="Text splitters" icon="scissors" href="/oss/python/integrations/splitters" arrow cta="Learn more">
+Text splitters
     Break large docs into smaller chunks that will be retrievable individually and fit within a model's context window.
-  </Card>
 
-  <Card title="Embedding models" icon="sitemap" href="/oss/python/integrations/embeddings" arrow cta="Learn more">
+Embedding models
     An embedding model turns text into a vector of numbers so that texts with similar meaning land close together in that vector space.
-  </Card>
 
-  <Card title="Vector stores" icon="database" href="/oss/python/integrations/vectorstores/" arrow cta="Learn more">
+Vector stores
     Specialized databases for storing and searching embeddings.
-  </Card>
 
-  <Card title="Retrievers" icon="binoculars" href="/oss/python/integrations/retrievers/" arrow cta="Learn more">
+Retrievers
     A retriever is an interface that returns documents given an unstructured query.
-  </Card>
-</Columns>
 
 ## RAG architectures
 
@@ -108,15 +98,13 @@ RAG can be implemented in multiple ways, depending on your system's needs. We ou
 | **Agentic RAG** | An LLM-powered agent decides *when* and *how* to retrieve during reasoning | ❌ Low     | ✅ High      | ⏳ Variable | Research assistants with access to multiple tools |
 | **Hybrid**      | Combines characteristics of both approaches with validation steps          | ⚖️ Medium | ⚖️ Medium   | ⏳ Variable | Domain-specific Q\&A with quality validation      |
 
-<Info>
-  **Latency**: Latency is generally more **predictable** in **2-Step RAG**, as the maximum number of LLM calls is known and capped. This predictability assumes that LLM inference time is the dominant factor. However, real-world latency may also be affected by the performance of retrieval steps, such as API response times, network delays, or database queries, which can vary based on the tools and infrastructure in use.
-</Info>
+**Latency**: Latency is generally more **predictable** in **2-Step RAG**, as the maximum number of LLM calls is known and capped. This predictability assumes that LLM inference time is the dominant factor. However, real-world latency may also be affected by the performance of retrieval steps, such as API response times, network delays, or database queries, which can vary based on the tools and infrastructure in use.
 
 ### 2-step RAG
 
 In **2-Step RAG**, the retrieval step is always executed before the generation step. This architecture is straightforward and predictable, making it suitable for many applications where the retrieval of relevant documents is a clear prerequisite for generating an answer.
 
-```mermaid actions={true} theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```mermaid actions={true}
 %%{init: {'flowchart': {'nodeSpacing': 12, 'rankSpacing': 18, 'padding': 4}, 'themeVariables': {'fontSize': '12px'}}}%%
 graph TB
     A[User Question] --> B["Retrieve Relevant Documents"]
@@ -131,27 +119,19 @@ graph TB
     class B,C process
 ```
 
-<br />
-
-<CardGroup cols={2}>
-  <Card title="Tutorial: Semantic search" icon="database" href="/oss/python/langchain/knowledge-base" arrow cta="Learn more">
+Tutorial: Semantic search
     Build a searchable knowledge base with document loaders, embeddings, and vector stores, then run a minimal retrieve-then-generate RAG workflow on top of it.
-  </Card>
 
-  <Card title="Tutorial: Evaluate a RAG application" icon="clipboard-check" href="/langsmith/evaluate-rag-tutorial" arrow cta="Learn more">
+Tutorial: Evaluate a RAG application
     Build a simple retrieve-then-generate RAG app and measure answer correctness, relevance, groundedness, and retrieval quality with LangSmith.
-  </Card>
-</CardGroup>
 
 ### Agentic RAG
 
 **Agentic Retrieval-Augmented Generation (RAG)** combines the strengths of Retrieval-Augmented Generation with agent-based reasoning. Instead of retrieving documents before answering, an agent (powered by an LLM) reasons step-by-step and decides **when** and **how** to retrieve information during the interaction.
 
-<Tip>
-  The only thing an agent needs to enable RAG behavior is access to one or more **tools** that can fetch external knowledge, such as documentation loaders, web APIs, or database queries.
-</Tip>
+The only thing an agent needs to enable RAG behavior is access to one or more **tools** that can fetch external knowledge, such as documentation loaders, web APIs, or database queries.
 
-```mermaid actions={true} theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```mermaid actions={true}
 %%{init: {'flowchart': {'nodeSpacing': 12, 'rankSpacing': 18, 'padding': 4}, 'themeVariables': {'fontSize': '12px'}}}%%
 graph TB
     A[User Input / Question] --> B["Agent (LLM)"]
@@ -173,7 +153,7 @@ graph TB
     class C,H decision
 ```
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import requests
 from langchain.tools import tool
 from langchain.chat_models import init_chat_model
@@ -193,15 +173,15 @@ Use fetch_url when you need to fetch information from a web-page; quote relevant
 
 agent = create_agent(
     model="claude-sonnet-4-6",
-    tools=[fetch_url], # A tool for retrieval [!code highlight]
+    tools=[fetch_url], # A tool for retrieval
     system_prompt=system_prompt,
 )
 ```
 
-<Expandable title="Extended example: Agentic RAG for LangGraph's llms.txt">
-  This example implements an **Agentic RAG system** to assist users in querying LangGraph documentation. The agent begins by loading [llms.txt](https://llmstxt.org/), which lists available documentation URLs, and can then dynamically use a `fetch_documentation` tool to retrieve and process the relevant content based on the user’s question.
+Extended example: Agentic RAG for LangGraph's llms.txt
+This example implements an **Agentic RAG system** to assist users in querying LangGraph documentation. The agent begins by loading llms.txt, which lists available documentation URLs, and can then dynamically use a `fetch_documentation` tool to retrieve and process the relevant content based on the user’s question.
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   import requests
   from langchain.agents import create_agent
   from langchain.messages import HumanMessage
@@ -214,7 +194,7 @@ agent = create_agent(
 
 
   @tool
-  def fetch_documentation(url: str) -> str:  # [!code highlight]
+  def fetch_documentation(url: str) -> str:
       """Fetch and convert documentation from a URL"""
       if not any(url.startswith(domain) for domain in ALLOWED_DOMAINS):
           return (
@@ -259,8 +239,8 @@ agent = create_agent(
 
   agent = create_agent(
       model=model,
-      tools=tools,  # [!code highlight]
-      system_prompt=system_prompt,  # [!code highlight]
+      tools=tools,
+      system_prompt=system_prompt,
       name="Agentic RAG",
   )
 
@@ -276,11 +256,9 @@ agent = create_agent(
 
   print(response['messages'][-1].content)
   ```
-</Expandable>
 
-<Card title="Tutorial: RAG with Deep Agents" icon="robot" href="/oss/python/deepagents/rag" arrow cta="Learn more">
-  Build a documentation Q\&A agent that retrieves relevant chunks at query time, offloads them to the filesystem, and delegates analysis to subagents.
-</Card>
+Tutorial: RAG with Deep Agents
+Build a documentation Q\&A agent that retrieves relevant chunks at query time, offloads them to the filesystem, and delegates analysis to subagents.
 
 ### Hybrid RAG
 
@@ -294,7 +272,7 @@ Typical components include:
 
 The architecture often supports multiple iterations between these steps:
 
-```mermaid actions={true} theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```mermaid actions={true}
 %%{init: {'flowchart': {'nodeSpacing': 12, 'rankSpacing': 18, 'padding': 4}, 'themeVariables': {'fontSize': '12px'}}}%%
 graph TB
     A[User Question] --> B[Query Enhancement]
@@ -325,7 +303,5 @@ This architecture is suitable for:
 * Systems that require validation or quality control steps
 * Workflows involving multiple sources or iterative refinement
 
-<Card title="Tutorial: Agentic RAG with Self-Correction" icon="robot" href="/oss/python/langgraph/agentic-rag" arrow cta="Learn more">
-  An example of **Hybrid RAG** that combines agentic reasoning with retrieval and self-correction.
-</Card>
-
+Tutorial: Agentic RAG with Self-Correction
+An example of **Hybrid RAG** that combines agentic reasoning with retrieval and self-correction.

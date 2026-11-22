@@ -13,19 +13,15 @@ This tutorial shows how to use **progressive disclosure** - a context management
 
 **What you'll build:** A SQL query assistant with two skills (sales analytics and inventory management). The agent sees lightweight skill descriptions in its system prompt, then loads full database schemas and business logic through tool calls only when relevant to the user's query.
 
-<Note>
-  For a complete example of a SQL agent with query execution, error correction, and validation, see our [SQL Agent tutorial](/oss/python/langchain/sql-agent). This tutorial focuses on the progressive disclosure pattern which can be applied to any domain.
-</Note>
+For a complete example of a SQL agent with query execution, error correction, and validation, see our SQL Agent tutorial. This tutorial focuses on the progressive disclosure pattern which can be applied to any domain.
 
-<Tip>
-  Progressive disclosure was popularized by Anthropic as a technique for building scalable agent skills systems. This approach uses a three-level architecture (metadata → core content → detailed resources) where agents load information only as needed. For more on this technique, see [Equipping agents for the real world with Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills).
-</Tip>
+Progressive disclosure was popularized by Anthropic as a technique for building scalable agent skills systems. This approach uses a three-level architecture (metadata → core content → detailed resources) where agents load information only as needed. For more on this technique, see Equipping agents for the real world with Agent Skills.
 
 ## How it works
 
 Here's the flow when a user asks for a SQL query:
 
-```mermaid theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```mermaid
 %%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#E5F4FF','primaryTextColor':'#030710','primaryBorderColor':'#006DDD','lineColor':'#40668D','secondaryColor':'#F6FFDB','tertiaryColor':'#FDF3FF','tertiaryBorderColor':'#7E65AE','tertiaryTextColor':'#504B5F'}}}%%
 flowchart TD
     Start([💬 User: Write SQL query<br/>for high-value customers]) --> SystemPrompt[📋 Agent sees skill descriptions:<br/>• sales_analytics<br/>• inventory_management]
@@ -61,27 +57,23 @@ flowchart TD
 
 **What are skills:** Skills, as popularized by Claude Code, are primarily prompt-based: self-contained units of specialized instructions for specific business tasks. In Claude Code, skills are exposed as directories with files on the file system, discovered through file operations. Skills guide behavior through prompts and can provide information about tool usage or include sample code for a coding agent to execute.
 
-<Tip>
-  Skills with progressive disclosure can be viewed as a form of [RAG (Retrieval-Augmented Generation)](/oss/python/deepagents/rag), where each skill is a retrieval unit—though not necessarily backed by embeddings or keyword search, but by tools for browsing content (like file operations or, in this tutorial, direct lookup).
-</Tip>
+Skills with progressive disclosure can be viewed as a form of RAG (Retrieval-Augmented Generation), where each skill is a retrieval unit—though not necessarily backed by embeddings or keyword search, but by tools for browsing content (like file operations or, in this tutorial, direct lookup).
 
 **Trade-offs:**
 
 * **Latency**: Loading skills on-demand requires additional tool calls, which adds latency to the first request that needs each skill
 * **Workflow control**: Basic implementations rely on prompting to guide skill usage - you cannot enforce hard constraints like "always try skill A before skill B" without custom logic
 
-<Tip>
-  **Implementing your own skills system**
+**Implementing your own skills system**
 
-  When building your own skills implementation (as we do in this tutorial), the core concept is progressive disclosure - loading information on-demand. Beyond that, you have full flexibility in implementation:
+When building your own skills implementation (as we do in this tutorial), the core concept is progressive disclosure - loading information on-demand. Beyond that, you have full flexibility in implementation:
 
-  * **Storage**: databases, S3, in-memory data structures, or any backend
-  * **Discovery**: direct lookup (this tutorial), RAG for large skill collections, file system scanning, or API calls
-  * **Loading logic**: customize latency characteristics and add logic to search through skill content or rank relevance
-  * **Side effects**: define what happens when a skill loads, such as exposing tools associated with that skill (covered in section 8)
+* **Storage**: databases, S3, in-memory data structures, or any backend
+* **Discovery**: direct lookup (this tutorial), RAG for large skill collections, file system scanning, or API calls
+* **Loading logic**: customize latency characteristics and add logic to search through skill content or rank relevance
+* **Side effects**: define what happens when a skill loads, such as exposing tools associated with that skill (covered in section 8)
 
-  This flexibility lets you optimize for your specific requirements around performance, storage, and workflow control.
-</Tip>
+This flexibility lets you optimize for your specific requirements around performance, storage, and workflow control.
 
 ## Setup
 
@@ -89,61 +81,52 @@ flowchart TD
 
 This tutorial requires the `langchain` package:
 
-<CodeGroup>
-  ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```bash pip
   pip install langchain
   ```
 
-  ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```bash uv
   uv add langchain
   ```
 
-  ```bash conda theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```bash conda
   conda install langchain -c conda-forge
   ```
-</CodeGroup>
 
-For more details, see our [Installation guide](/oss/python/langchain/install).
+For more details, see our Installation guide.
 
 ### LangSmith
 
-Set up [LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-langchain-multi-agent-skills-sql-assistant) to inspect what is happening inside your agent. Then set the following environment variables:
+Set up LangSmith to inspect what is happening inside your agent. Then set the following environment variables:
 
-<CodeGroup>
-  ```bash Shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```bash Shell
   export LANGSMITH_TRACING="true"
   export LANGSMITH_API_KEY="..."
   ```
 
-  ```python Python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python Python
   import getpass
   import os
 
   os.environ["LANGSMITH_TRACING"] = "true"
   os.environ["LANGSMITH_API_KEY"] = getpass.getpass()
   ```
-</CodeGroup>
 
 ### Select an LLM
 
 Select a chat model from LangChain's suite of integrations:
 
-<Tabs>
-  <Tab title="OpenAI">
-    👉 Read the [OpenAI chat model integration docs](/oss/python/integrations/chat/openai/)
+    👉 Read the OpenAI chat model integration docs
 
-    <CodeGroup>
-      ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash pip
       pip install -U "langchain[openai]"
       ```
 
-      ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash uv
       uv add "langchain[openai]"
       ```
-    </CodeGroup>
 
-    <CodeGroup>
-      ```python init_chat_model theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python init_chat_model
       import os
       from langchain.chat_models import init_chat_model
 
@@ -152,7 +135,7 @@ Select a chat model from LangChain's suite of integrations:
       model = init_chat_model("gpt-5.5")
       ```
 
-      ```python Model Class theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Model Class
       import os
       from langchain_openai import ChatOpenAI
 
@@ -160,24 +143,18 @@ Select a chat model from LangChain's suite of integrations:
 
       model = ChatOpenAI(model="gpt-5.5")
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="Anthropic">
-    👉 Read the [Anthropic chat model integration docs](/oss/python/integrations/chat/anthropic/)
+    👉 Read the Anthropic chat model integration docs
 
-    <CodeGroup>
-      ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash pip
       pip install -U "langchain[anthropic]"
       ```
 
-      ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash uv
       uv add "langchain[anthropic]"
       ```
-    </CodeGroup>
 
-    <CodeGroup>
-      ```python init_chat_model theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python init_chat_model
       import os
       from langchain.chat_models import init_chat_model
 
@@ -186,7 +163,7 @@ Select a chat model from LangChain's suite of integrations:
       model = init_chat_model("claude-sonnet-4-6")
       ```
 
-      ```python Model Class theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Model Class
       import os
       from langchain_anthropic import ChatAnthropic
 
@@ -194,24 +171,18 @@ Select a chat model from LangChain's suite of integrations:
 
       model = ChatAnthropic(model="claude-sonnet-4-6")
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="Azure">
-    👉 Read the [Azure chat model integration docs](/oss/python/integrations/chat/azure_chat_openai/)
+    👉 Read the Azure chat model integration docs
 
-    <CodeGroup>
-      ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash pip
       pip install -U "langchain[openai]"
       ```
 
-      ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash uv
       uv add "langchain[openai]"
       ```
-    </CodeGroup>
 
-    <CodeGroup>
-      ```python init_chat_model theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python init_chat_model
       import os
       from langchain.chat_models import init_chat_model
 
@@ -225,7 +196,7 @@ Select a chat model from LangChain's suite of integrations:
       )
       ```
 
-      ```python Model Class theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Model Class
       import os
       from langchain_openai import AzureChatOpenAI
 
@@ -238,24 +209,18 @@ Select a chat model from LangChain's suite of integrations:
           azure_deployment=os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"]
       )
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="Google Gemini">
-    👉 Read the [Google GenAI chat model integration docs](/oss/python/integrations/chat/google_generative_ai/)
+    👉 Read the Google GenAI chat model integration docs
 
-    <CodeGroup>
-      ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash pip
       pip install -U "langchain[google-genai]"
       ```
 
-      ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash uv
       uv add "langchain[google-genai]"
       ```
-    </CodeGroup>
 
-    <CodeGroup>
-      ```python init_chat_model theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python init_chat_model
       import os
       from langchain.chat_models import init_chat_model
 
@@ -264,7 +229,7 @@ Select a chat model from LangChain's suite of integrations:
       model = init_chat_model("google_genai:gemini-3.7-flash")
       ```
 
-      ```python Model Class theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Model Class
       import os
       from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -272,24 +237,18 @@ Select a chat model from LangChain's suite of integrations:
 
       model = ChatGoogleGenerativeAI(model="gemini-3.7-flash")
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="AWS Bedrock">
-    👉 Read the [AWS Bedrock chat model integration docs](/oss/python/integrations/chat/bedrock/)
+    👉 Read the AWS Bedrock chat model integration docs
 
-    <CodeGroup>
-      ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash pip
       pip install -U "langchain[aws]"
       ```
 
-      ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash uv
       uv add "langchain[aws]"
       ```
-    </CodeGroup>
 
-    <CodeGroup>
-      ```python init_chat_model theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python init_chat_model
       from langchain.chat_models import init_chat_model
 
       # Follow the steps here to configure your credentials:
@@ -301,29 +260,23 @@ Select a chat model from LangChain's suite of integrations:
       )
       ```
 
-      ```python Model Class theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Model Class
       from langchain_aws import ChatBedrock
 
       model = ChatBedrock(model="us.anthropic.claude-sonnet-4-6")
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="HuggingFace">
-    👉 Read the [HuggingFace chat model integration docs](/oss/python/integrations/chat/huggingface/)
+    👉 Read the HuggingFace chat model integration docs
 
-    <CodeGroup>
-      ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash pip
       pip install -U "langchain[huggingface]"
       ```
 
-      ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash uv
       uv add "langchain[huggingface]"
       ```
-    </CodeGroup>
 
-    <CodeGroup>
-      ```python init_chat_model theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python init_chat_model
       import os
       from langchain.chat_models import init_chat_model
 
@@ -337,7 +290,7 @@ Select a chat model from LangChain's suite of integrations:
       )
       ```
 
-      ```python Model Class theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Model Class
       import os
       from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 
@@ -350,24 +303,18 @@ Select a chat model from LangChain's suite of integrations:
       )
       model = ChatHuggingFace(llm=llm)
       ```
-    </CodeGroup>
-  </Tab>
 
-  <Tab title="OpenRouter">
-    👉 Read the [OpenRouter chat model integration docs](/oss/python/integrations/chat/openrouter/)
+    👉 Read the OpenRouter chat model integration docs
 
-    <CodeGroup>
-      ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash pip
       pip install -U "langchain-openrouter"
       ```
 
-      ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```bash uv
       uv add "langchain-openrouter"
       ```
-    </CodeGroup>
 
-    <CodeGroup>
-      ```python init_chat_model theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python init_chat_model
       import os
       from langchain.chat_models import init_chat_model
 
@@ -379,7 +326,7 @@ Select a chat model from LangChain's suite of integrations:
       )
       ```
 
-      ```python Model Class theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+      ```python Model Class
       import os
       from langchain_openrouter import ChatOpenRouter
 
@@ -387,18 +334,15 @@ Select a chat model from LangChain's suite of integrations:
 
       model = ChatOpenRouter(model="auto")
       ```
-    </CodeGroup>
-  </Tab>
-</Tabs>
 
 ## 1. Define skills
 
 First, define the structure for skills. Each skill has a name, a brief description (shown in the system prompt), and full content (loaded on-demand):
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from typing import TypedDict
 
-class Skill(TypedDict):  # [!code highlight]
+class Skill(TypedDict):
     """A skill that can be progressively disclosed to the agent."""
     name: str  # Unique identifier for the skill
     description: str  # 1-2 sentence description to show in system prompt
@@ -407,8 +351,8 @@ class Skill(TypedDict):  # [!code highlight]
 
 Now define example skills for a SQL query assistant. The skills are designed to be **lightweight in description** (shown to the agent upfront) but **detailed in content** (loaded only when needed):
 
-<Accordion title="View complete skill definitions">
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+View complete skill definitions
+  ```python
   SKILLS: list[Skill] = [
       {
           "name": "sales_analytics",
@@ -536,16 +480,15 @@ Now define example skills for a SQL query assistant. The skills are designed to 
       },
   ]
   ```
-</Accordion>
 
 ## 2. Create skill loading tool
 
 Create a tool to load full skill content on-demand:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.tools import tool
 
-@tool  # [!code highlight]
+@tool
 def load_skill(skill_name: str) -> str:
     """Load the full content of a skill into the agent's context.
 
@@ -559,33 +502,31 @@ def load_skill(skill_name: str) -> str:
     # Find and return the requested skill
     for skill in SKILLS:
         if skill["name"] == skill_name:
-            return f"Loaded skill: {skill_name}\n\n{skill['content']}"  # [!code highlight]
+            return f"Loaded skill: {skill_name}\n\n{skill['content']}"
 
     # Skill not found
     available = ", ".join(s["name"] for s in SKILLS)
     return f"Skill '{skill_name}' not found. Available skills: {available}"
 ```
 
-The `load_skill` tool returns the full skill content as a string, which becomes part of the conversation as a ToolMessage. For more details on creating and using tools, see the [Tools guide](/oss/python/langchain/tools).
+The `load_skill` tool returns the full skill content as a string, which becomes part of the conversation as a ToolMessage. For more details on creating and using tools, see the Tools guide.
 
 ## 3. Build skill middleware
 
 Create custom middleware that injects skill descriptions into the system prompt. This middleware makes skills discoverable without loading their full content upfront.
 
-<Note>
-  This guide demonstrates creating custom middleware. For a comprehensive guide on middleware concepts and patterns, see the [custom middleware documentation](/oss/python/langchain/middleware/custom).
-</Note>
+This guide demonstrates creating custom middleware. For a comprehensive guide on middleware concepts and patterns, see the custom middleware documentation.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents.middleware import ModelRequest, ModelResponse, AgentMiddleware
 from langchain.messages import SystemMessage
 from typing import Callable
 
-class SkillMiddleware(AgentMiddleware):  # [!code highlight]
+class SkillMiddleware(AgentMiddleware):
     """Middleware that injects skill descriptions into the system prompt."""
 
     # Register the load_skill tool as a class variable
-    tools = [load_skill]  # [!code highlight]
+    tools = [load_skill]
 
     def __init__(self):
         """Initialize and generate the skills prompt from SKILLS."""
@@ -604,10 +545,10 @@ class SkillMiddleware(AgentMiddleware):  # [!code highlight]
     ) -> ModelResponse:
         """Sync: Inject skill descriptions into system prompt."""
         # Build the skills addendum
-        skills_addendum = ( # [!code highlight]
-            f"\n\n## Available Skills\n\n{self.skills_prompt}\n\n" # [!code highlight]
-            "Use the load_skill tool when you need detailed information " # [!code highlight]
-            "about handling a specific type of request." # [!code highlight]
+        skills_addendum = (
+            f"\n\n## Available Skills\n\n{self.skills_prompt}\n\n"
+            "Use the load_skill tool when you need detailed information "
+            "about handling a specific type of request."
         )
 
         # Append to system message content blocks
@@ -621,15 +562,13 @@ class SkillMiddleware(AgentMiddleware):  # [!code highlight]
 
 The middleware appends skill descriptions to the system prompt, making the agent aware of available skills without loading their full content. The `load_skill` tool is registered as a class variable, making it available to the agent.
 
-<Note>
-  **Production consideration**: This tutorial loads the skill list in `__init__` for simplicity. In a production system, you may want to load skills in the `before_agent` hook instead, allowing them to be refreshed periodically to reflect up-to-date changes (e.g., when new skills are added or existing ones are modified). See the [before\_agent hook documentation](/oss/python/langchain/middleware/custom#node-style-hooks) for details.
-</Note>
+**Production consideration**: This tutorial loads the skill list in `__init__` for simplicity. In a production system, you may want to load skills in the `before_agent` hook instead, allowing them to be refreshed periodically to reflect up-to-date changes (e.g., when new skills are added or existing ones are modified). See the before\_agent hook documentation for details.
 
 ## 4. Create the agent with skill support
 
 Now create the agent with the skill middleware and a checkpointer for state persistence:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
@@ -640,7 +579,7 @@ agent = create_agent(
         "You are a SQL query assistant that helps users "
         "write queries against business databases."
     ),
-    middleware=[SkillMiddleware()],  # [!code highlight]
+    middleware=[SkillMiddleware()],
     checkpointer=InMemorySaver(),
 )
 ```
@@ -651,7 +590,7 @@ The agent now has access to skill descriptions in its system prompt and can call
 
 Test the agent with a question that requires skill-specific knowledge:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain_core.utils.uuid import uuid7
 
 # Configuration for this conversation thread
@@ -659,7 +598,7 @@ thread_id = str(uuid7())
 config = {"configurable": {"thread_id": thread_id}}
 
 # Ask for a SQL query
-result = agent.invoke(  # [!code highlight]
+result = agent.invoke(
     {
         "messages": [
             {
@@ -756,31 +695,31 @@ The agent saw the lightweight skill description in its system prompt, recognized
 
 ## 6. Advanced: Add constraints with custom state
 
-<Accordion title="Optional: Track loaded skills and enforce tool constraints">
-  You can add constraints to enforce that certain tools are only available after specific skills have been loaded. This requires tracking which skills have been loaded in custom agent state.
+Optional: Track loaded skills and enforce tool constraints
+You can add constraints to enforce that certain tools are only available after specific skills have been loaded. This requires tracking which skills have been loaded in custom agent state.
 
-  ### Define custom state
+### Define custom state
 
-  First, extend the agent state to track loaded skills:
+First, extend the agent state to track loaded skills:
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   from langchain.agents.middleware import AgentState
 
-  class CustomState(AgentState):  # [!code highlight]
-      skills_loaded: NotRequired[list[str]]  # Track which skills have been loaded  # [!code highlight]
+  class CustomState(AgentState):
+      skills_loaded: NotRequired[list[str]]  # Track which skills have been loaded
   ```
 
-  ### Update load\_skill to modify state
+### Update load\_skill to modify state
 
-  Modify the `load_skill` tool to update state when a skill is loaded:
+Modify the `load_skill` tool to update state when a skill is loaded:
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
-  from langgraph.types import Command  # [!code highlight]
+  ```python
+  from langgraph.types import Command
   from langchain.tools import tool, ToolRuntime
-  from langchain.messages import ToolMessage  # [!code highlight]
+  from langchain.messages import ToolMessage
 
   @tool
-  def load_skill(skill_name: str, runtime: ToolRuntime) -> Command:  # [!code highlight]
+  def load_skill(skill_name: str, runtime: ToolRuntime) -> Command:
       """Load the full content of a skill into the agent's context.
 
       Use this when you need detailed information about how to handle a specific
@@ -796,17 +735,17 @@ The agent saw the lightweight skill description in its system prompt, recognized
               skill_content = f"Loaded skill: {skill_name}\n\n{skill['content']}"
 
               # Update state to track loaded skill
-              return Command(  # [!code highlight]
-                  update={  # [!code highlight]
-                      "messages": [  # [!code highlight]
-                          ToolMessage(  # [!code highlight]
-                              content=skill_content,  # [!code highlight]
-                              tool_call_id=runtime.tool_call_id,  # [!code highlight]
-                          )  # [!code highlight]
-                      ],  # [!code highlight]
-                      "skills_loaded": [skill_name],  # [!code highlight]
-                  }  # [!code highlight]
-              )  # [!code highlight]
+              return Command(
+                  update={
+                      "messages": [
+                          ToolMessage(
+                              content=skill_content,
+                              tool_call_id=runtime.tool_call_id,
+                          )
+                      ],
+                      "skills_loaded": [skill_name],
+                  }
+              )
 
       # Skill not found
       available = ", ".join(s["name"] for s in SKILLS)
@@ -822,13 +761,13 @@ The agent saw the lightweight skill description in its system prompt, recognized
       )
   ```
 
-  ### Create constrained tool
+### Create constrained tool
 
-  Create a tool that's only usable after a specific skill has been loaded:
+Create a tool that's only usable after a specific skill has been loaded:
 
-  ````python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ````python
   @tool
-  def write_sql_query(  # [!code highlight]
+  def write_sql_query(
       query: str,
       vertical: str,
       runtime: ToolRuntime,
@@ -843,14 +782,14 @@ The agent saw the lightweight skill description in its system prompt, recognized
           vertical: The business vertical (sales_analytics or inventory_management)
       """
       # Check if the required skill has been loaded
-      skills_loaded = runtime.state.get("skills_loaded", [])  # [!code highlight]
+      skills_loaded = runtime.state.get("skills_loaded", [])
 
-      if vertical not in skills_loaded:  # [!code highlight]
-          return (  # [!code highlight]
-              f"Error: You must load the '{vertical}' skill first "  # [!code highlight]
-              f"to understand the database schema before writing queries. "  # [!code highlight]
-              f"Use load_skill('{vertical}') to load the schema."  # [!code highlight]
-          )  # [!code highlight]
+      if vertical not in skills_loaded:
+          return (
+              f"Error: You must load the '{vertical}' skill first "
+              f"to understand the database schema before writing queries. "
+              f"Use load_skill('{vertical}') to load the schema."
+          )
 
       # Validate and format the query
       return (
@@ -861,43 +800,42 @@ The agent saw the lightweight skill description in its system prompt, recognized
       )
   ````
 
-  ### Update middleware and agent
+### Update middleware and agent
 
-  Update the middleware to use the custom state schema:
+Update the middleware to use the custom state schema:
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
-  class SkillMiddleware(AgentMiddleware[CustomState]):  # [!code highlight]
+  ```python
+  class SkillMiddleware(AgentMiddleware[CustomState]):
       """Middleware that injects skill descriptions into the system prompt."""
 
-      state_schema = CustomState  # [!code highlight]
-      tools = [load_skill, write_sql_query]  # [!code highlight]
+      state_schema = CustomState
+      tools = [load_skill, write_sql_query]
 
       # ... rest of the middleware implementation stays the same
   ```
 
-  Create the agent with the middleware that registers the constrained tool:
+Create the agent with the middleware that registers the constrained tool:
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   agent = create_agent(
       model,
       system_prompt=(
           "You are a SQL query assistant that helps users "
           "write queries against business databases."
       ),
-      middleware=[SkillMiddleware()],  # [!code highlight]
+      middleware=[SkillMiddleware()],
       checkpointer=InMemorySaver(),
   )
   ```
 
-  Now if the agent tries to use `write_sql_query` before loading the required skill, it will receive an error message prompting it to load the appropriate skill (e.g., `sales_analytics` or `inventory_management`) first. This ensures the agent has the necessary schema knowledge before attempting to validate queries.
-</Accordion>
+Now if the agent tries to use `write_sql_query` before loading the required skill, it will receive an error message prompting it to load the appropriate skill (e.g., `sales_analytics` or `inventory_management`) first. This ensures the agent has the necessary schema knowledge before attempting to validate queries.
 
 ## Complete example
 
-<Accordion title="View complete runnable script">
-  Here's a complete, runnable implementation combining all the pieces from this tutorial:
+View complete runnable script
+Here's a complete, runnable implementation combining all the pieces from this tutorial:
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   from langchain_core.utils.uuid import uuid7
   from typing import TypedDict, NotRequired
   from langchain.tools import tool
@@ -1148,84 +1086,81 @@ The agent saw the lightweight skill description in its system prompt, recognized
               print(f"{message.type}: {message.content}")
   ```
 
-  This complete example includes:
+This complete example includes:
 
-  * Skill definitions with full database schemas
-  * The `load_skill` tool for on-demand loading
-  * `SkillMiddleware` that injects skill descriptions into the system prompt
-  * Agent creation with middleware and checkpointer
-  * Example usage showing how the agent loads skills and writes SQL queries
+* Skill definitions with full database schemas
+* The `load_skill` tool for on-demand loading
+* `SkillMiddleware` that injects skill descriptions into the system prompt
+* Agent creation with middleware and checkpointer
+* Example usage showing how the agent loads skills and writes SQL queries
 
-  To run this, you'll need to:
+To run this, you'll need to:
 
-  1. Install required packages: `pip install langchain langchain-openai langgraph`
-  2. Set your API key (e.g., `export OPENAI_API_KEY=...`)
-  3. Replace the model initialization with your preferred LLM provider
-</Accordion>
+1. Install required packages: `pip install langchain langchain-openai langgraph`
+2. Set your API key (e.g., `export OPENAI_API_KEY=...`)
+3. Replace the model initialization with your preferred LLM provider
 
 ## Implementation variations
 
-<Accordion title="View implementation options and trade-offs">
-  This tutorial implemented skills as in-memory Python dictionaries loaded through tool calls. However, there are several ways to implement progressive disclosure with skills:
+View implementation options and trade-offs
+This tutorial implemented skills as in-memory Python dictionaries loaded through tool calls. However, there are several ways to implement progressive disclosure with skills:
 
-  **Storage backends:**
+**Storage backends:**
 
-  * **In-memory** (this tutorial): Skills defined as Python data structures, fast access, no I/O overhead
-  * **File system** (Claude Code approach): Skills as directories with files, discovered via file operations like `read_file`
-  * **Remote storage**: Skills in S3, databases, Notion, or APIs, fetched on-demand
+* **In-memory** (this tutorial): Skills defined as Python data structures, fast access, no I/O overhead
+* **File system** (Claude Code approach): Skills as directories with files, discovered via file operations like `read_file`
+* **Remote storage**: Skills in S3, databases, Notion, or APIs, fetched on-demand
 
-  **Skill discovery** (how the agent learns which skills exist):
+**Skill discovery** (how the agent learns which skills exist):
 
-  * **System prompt listing**: Skill descriptions in system prompt (used in this tutorial)
-  * **File-based**: Discover skills by scanning directories (Claude Code approach)
-  * **Registry-based**: Query a skill registry service or API for available skills
-  * **Dynamic lookup**: List available skills via a tool call
+* **System prompt listing**: Skill descriptions in system prompt (used in this tutorial)
+* **File-based**: Discover skills by scanning directories (Claude Code approach)
+* **Registry-based**: Query a skill registry service or API for available skills
+* **Dynamic lookup**: List available skills via a tool call
 
-  **Progressive disclosure strategies** (how skill content is loaded):
+**Progressive disclosure strategies** (how skill content is loaded):
 
-  * **Single load**: Load entire skill content in one tool call (used in this tutorial)
-  * **Paginated**: Load skill content in multiple pages/chunks for large skills
-  * **Search-based**: Search within a specific skill's content for relevant sections (e.g., using grep/read operations on skill files)
-  * **Hierarchical**: Load skill overview first, then drill into specific subsections
+* **Single load**: Load entire skill content in one tool call (used in this tutorial)
+* **Paginated**: Load skill content in multiple pages/chunks for large skills
+* **Search-based**: Search within a specific skill's content for relevant sections (e.g., using grep/read operations on skill files)
+* **Hierarchical**: Load skill overview first, then drill into specific subsections
 
-  **Size considerations** (uncalibrated mental model - optimize for your system):
+**Size considerations** (uncalibrated mental model - optimize for your system):
 
-  * **Small skills** (\< 1K tokens / \~750 words): Can be included directly in system prompt and cached with prompt caching for cost savings and faster responses
-  * **Medium skills** (1-10K tokens / \~750-7.5K words): Benefit from on-demand loading to avoid context overhead (this tutorial)
-  * **Large skills** (> 10K tokens / \~7.5K words, or > 5-10% of context window): Should use progressive disclosure techniques like pagination, search-based loading, or hierarchical exploration to avoid consuming excessive context
+* **Small skills** (\< 1K tokens / \~750 words): Can be included directly in system prompt and cached with prompt caching for cost savings and faster responses
+* **Medium skills** (1-10K tokens / \~750-7.5K words): Benefit from on-demand loading to avoid context overhead (this tutorial)
+* **Large skills** (> 10K tokens / \~7.5K words, or > 5-10% of context window): Should use progressive disclosure techniques like pagination, search-based loading, or hierarchical exploration to avoid consuming excessive context
 
-  The choice depends on your requirements: in-memory is fastest but requires redeployment for skill updates, while file-based or remote storage enables dynamic skill management without code changes.
-</Accordion>
+The choice depends on your requirements: in-memory is fastest but requires redeployment for skill updates, while file-based or remote storage enables dynamic skill management without code changes.
 
 ## Progressive disclosure and context engineering
 
-<Accordion title="Combining with few-shot prompting and other techniques">
-  Progressive disclosure is fundamentally a **[context engineering](/oss/python/langchain/context-engineering) technique** - you're managing what information is available to the agent and when. This tutorial focused on loading database schemas, but the same principles apply to other types of context.
+Combining with few-shot prompting and other techniques
+Progressive disclosure is fundamentally a **context engineering technique** - you're managing what information is available to the agent and when. This tutorial focused on loading database schemas, but the same principles apply to other types of context.
 
-  ### Combining with few-shot prompting
+### Combining with few-shot prompting
 
-  For the SQL query use case, you could extend progressive disclosure to dynamically load **few-shot examples** that match the user's query:
+For the SQL query use case, you could extend progressive disclosure to dynamically load **few-shot examples** that match the user's query:
 
-  **Example approach:**
+**Example approach:**
 
-  1. User asks: "Find customers who haven't ordered in 6 months"
-  2. Agent loads `sales_analytics` schema (as shown in this tutorial)
-  3. Agent also loads 2-3 relevant example queries (via semantic search or tag-based lookup):
+1. User asks: "Find customers who haven't ordered in 6 months"
+2. Agent loads `sales_analytics` schema (as shown in this tutorial)
+3. Agent also loads 2-3 relevant example queries (via semantic search or tag-based lookup):
      * Query for finding inactive customers
      * Query with date-based filtering
      * Query joining customers and orders tables
-  4. Agent writes query using both schema knowledge AND example patterns
+4. Agent writes query using both schema knowledge AND example patterns
 
-  This combination of progressive disclosure (loading schemas on-demand) and dynamic few-shot prompting (loading relevant examples) creates a powerful context engineering pattern that scales to large knowledge bases while providing high-quality, grounded outputs.
-</Accordion>
+This combination of progressive disclosure (loading schemas on-demand) and dynamic few-shot prompting (loading relevant examples) creates a powerful context engineering pattern that scales to large knowledge bases while providing high-quality, grounded outputs.
 
 ## Next steps
 
-* Learn about [middleware](/oss/python/langchain/middleware) for more dynamic agent behaviors
-* Explore [context engineering](/oss/python/langchain/context-engineering) techniques for managing agent context
-* Explore the [handoffs pattern](/oss/python/langchain/multi-agent/handoffs-customer-support) for sequential workflows
-* Read the [subagents pattern](/oss/python/langchain/multi-agent/subagents-personal-assistant) for parallel task routing
-* See [multi-agent patterns](/oss/python/langchain/multi-agent) for other approaches to specialized agents
-* Use [LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-langchain-multi-agent-skills-sql-assistant) to debug and monitor skill loading
+* Learn about middleware for more dynamic agent behaviors
+* Explore context engineering techniques for managing agent context
+* Explore the handoffs pattern for sequential workflows
+* Read the subagents pattern for parallel task routing
+* See multi-agent patterns for other approaches to specialized agents
+* Use LangSmith to debug and monitor skill loading
 
 ***

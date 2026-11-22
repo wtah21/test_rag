@@ -9,11 +9,11 @@ url: https://docs.langchain.com/oss/python/langchain/test/evals
 
 > Evaluate agent trajectories using deterministic matching or LLM-as-judge evaluators with AgentEvals and LangSmith.
 
-Evaluations ("evals") measure how well your agent performs by assessing its execution trajectory, the sequence of messages and tool calls it produces. Unlike [integration tests](/oss/python/langchain/test/integration-testing) that verify basic correctness, evals score agent behavior against a reference or rubric, making them useful for catching regressions when you change prompts, tools, or models.
+Evaluations ("evals") measure how well your agent performs by assessing its execution trajectory, the sequence of messages and tool calls it produces. Unlike integration tests that verify basic correctness, evals score agent behavior against a reference or rubric, making them useful for catching regressions when you change prompts, tools, or models.
 
 An evaluator is a function that takes agent outputs (and optionally reference outputs) and returns a score:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 def evaluator(*, outputs: dict, reference_outputs: dict):
     output_messages = outputs["messages"]
     reference_messages = reference_outputs["messages"]
@@ -21,26 +21,24 @@ def evaluator(*, outputs: dict, reference_outputs: dict):
     return {"key": "evaluator_score", "score": score}
 ```
 
-The [`agentevals`](https://github.com/langchain-ai/agentevals) package provides prebuilt evaluators for agent trajectories. You can evaluate by performing a **trajectory match** (deterministic comparison) or by using an **LLM judge** (qualitative assessment):
+The `agentevals` package provides prebuilt evaluators for agent trajectories. You can evaluate by performing a **trajectory match** (deterministic comparison) or by using an **LLM judge** (qualitative assessment):
 
 | Approach                                        | When to use                                                                     |
 | ----------------------------------------------- | ------------------------------------------------------------------------------- |
-| [Trajectory match](#trajectory-match-evaluator) | You know the expected tool calls and want fast, deterministic, cost-free checks |
-| [LLM-as-judge](#llm-as-judge-evaluator)         | You want to assess overall quality and reasoning without strict expectations    |
+| Trajectory match | You know the expected tool calls and want fast, deterministic, cost-free checks |
+| LLM-as-judge         | You want to assess overall quality and reasoning without strict expectations    |
 
 ## Install AgentEvals
 
-<CodeGroup>
-  ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```bash pip
   pip install -U agentevals
   ```
 
-  ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```bash uv
   uv add agentevals
   ```
-</CodeGroup>
 
-Or, clone the [AgentEvals repository](https://github.com/langchain-ai/agentevals) directly.
+Or, clone the AgentEvals repository directly.
 
 ## Trajectory match evaluator
 
@@ -55,7 +53,7 @@ AgentEvals offers the `create_trajectory_match_evaluator` function to match your
 
 The examples below share a common setup, an agent with a `get_weather` tool:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain.messages import HumanMessage, AIMessage, ToolMessage
@@ -70,13 +68,13 @@ def get_weather(city: str):
 agent = create_agent("claude-sonnet-4-6", tools=[get_weather])
 ```
 
-<Accordion title="Strict match">
-  The `strict` mode ensures trajectories contain identical messages in the same order with the same tool calls, though it allows for differences in message content. This is useful when you need to enforce a specific sequence of operations, such as requiring a policy lookup before authorizing an action.
+Strict match
+The `strict` mode ensures trajectories contain identical messages in the same order with the same tool calls, though it allows for differences in message content. This is useful when you need to enforce a specific sequence of operations, such as requiring a policy lookup before authorizing an action.
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
-  evaluator = create_trajectory_match_evaluator(  # [!code highlight]
-      trajectory_match_mode="strict",  # [!code highlight]
-  )  # [!code highlight]
+  ```python
+  evaluator = create_trajectory_match_evaluator(
+      trajectory_match_mode="strict",
+  )
 
   def test_weather_tool_called_strict():
       result = agent.invoke({
@@ -103,12 +101,11 @@ agent = create_agent("claude-sonnet-4-6", tools=[get_weather])
       # }
       assert evaluation["score"] is True
   ```
-</Accordion>
 
-<Accordion title="Unordered match">
-  The `unordered` mode allows the same tool calls in any order. This is helpful when you want to verify that specific information was retrieved but don't care about the sequence. For example, an agent that checks both weather and events for a city with different tool calls.
+Unordered match
+The `unordered` mode allows the same tool calls in any order. This is helpful when you want to verify that specific information was retrieved but don't care about the sequence. For example, an agent that checks both weather and events for a city with different tool calls.
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   @tool
   def get_events(city: str):
       """Get events happening in a city."""
@@ -116,9 +113,9 @@ agent = create_agent("claude-sonnet-4-6", tools=[get_weather])
 
   agent = create_agent("claude-sonnet-4-6", tools=[get_weather, get_events])
 
-  evaluator = create_trajectory_match_evaluator(  # [!code highlight]
-      trajectory_match_mode="unordered",  # [!code highlight]
-  )  # [!code highlight]
+  evaluator = create_trajectory_match_evaluator(
+      trajectory_match_mode="unordered",
+  )
 
   def test_multiple_tools_any_order():
       result = agent.invoke({
@@ -142,12 +139,11 @@ agent = create_agent("claude-sonnet-4-6", tools=[get_weather])
       )
       assert evaluation["score"] is True
   ```
-</Accordion>
 
-<Accordion title="Subset and superset match">
-  The `superset` and `subset` modes match partial trajectories. The `superset` mode verifies that the agent called at least the tools in the reference trajectory, allowing additional tool calls. The `subset` mode ensures the agent did not call any tools beyond those in the reference.
+Subset and superset match
+The `superset` and `subset` modes match partial trajectories. The `superset` mode verifies that the agent called at least the tools in the reference trajectory, allowing additional tool calls. The `subset` mode ensures the agent did not call any tools beyond those in the reference.
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   @tool
   def get_detailed_forecast(city: str):
       """Get detailed weather forecast for a city."""
@@ -155,9 +151,9 @@ agent = create_agent("claude-sonnet-4-6", tools=[get_weather])
 
   agent = create_agent("claude-sonnet-4-6", tools=[get_weather, get_detailed_forecast])
 
-  evaluator = create_trajectory_match_evaluator(  # [!code highlight]
-      trajectory_match_mode="superset",  # [!code highlight]
-  )  # [!code highlight]
+  evaluator = create_trajectory_match_evaluator(
+      trajectory_match_mode="superset",
+  )
 
   def test_agent_calls_required_tools_plus_extra():
       result = agent.invoke({
@@ -180,24 +176,21 @@ agent = create_agent("claude-sonnet-4-6", tools=[get_weather])
       )
       assert evaluation["score"] is True
   ```
-</Accordion>
 
-<Info>
-  You can also set the `tool_args_match_mode` property and/or `tool_args_match_overrides` to customize how the evaluator considers equality between tool calls in the actual trajectory vs. the reference. By default, only tool calls with the same arguments to the same tool are considered equal. Visit the [repository](https://github.com/langchain-ai/agentevals?tab=readme-ov-file#tool-args-match-modes) for more details.
-</Info>
+You can also set the `tool_args_match_mode` property and/or `tool_args_match_overrides` to customize how the evaluator considers equality between tool calls in the actual trajectory vs. the reference. By default, only tool calls with the same arguments to the same tool are considered equal. Visit the repository for more details.
 
 ## LLM-as-judge evaluator
 
 You can use an LLM to evaluate the agent's execution path with the `create_trajectory_llm_as_judge` function. Unlike trajectory match evaluators, it doesn't require a reference trajectory, but one can be provided if available.
 
-<Accordion title="Without reference trajectory">
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Without reference trajectory
+  ```python
   from agentevals.trajectory.llm import create_trajectory_llm_as_judge, TRAJECTORY_ACCURACY_PROMPT
 
-  evaluator = create_trajectory_llm_as_judge(  # [!code highlight]
-      model="openai:o3-mini",  # [!code highlight]
-      prompt=TRAJECTORY_ACCURACY_PROMPT,  # [!code highlight]
-  )  # [!code highlight]
+  evaluator = create_trajectory_llm_as_judge(
+      model="openai:o3-mini",
+      prompt=TRAJECTORY_ACCURACY_PROMPT,
+  )
 
   def test_trajectory_quality():
       result = agent.invoke({
@@ -209,12 +202,11 @@ You can use an LLM to evaluate the agent's execution path with the `create_traje
       )
       assert evaluation["score"] is True
   ```
-</Accordion>
 
-<Accordion title="With reference trajectory">
-  If you have a reference trajectory, use the prebuilt `TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE` prompt:
+With reference trajectory
+If you have a reference trajectory, use the prebuilt `TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE` prompt:
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   from agentevals.trajectory.llm import create_trajectory_llm_as_judge, TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE
 
   evaluator = create_trajectory_llm_as_judge(
@@ -226,18 +218,15 @@ You can use an LLM to evaluate the agent's execution path with the `create_traje
       reference_outputs=reference_trajectory,
   )
   ```
-</Accordion>
 
-<Info>
-  For more configurability over how the LLM evaluates the trajectory, visit the [repository](https://github.com/langchain-ai/agentevals?tab=readme-ov-file#trajectory-llm-as-judge).
-</Info>
+For more configurability over how the LLM evaluates the trajectory, visit the repository.
 
 ### Async support
 
 All `agentevals` evaluators support Python asyncio. Async versions are available by adding `async` after `create_` in the function name.
 
-<Accordion title="Async judge and evaluator example">
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Async judge and evaluator example
+  ```python
   from agentevals.trajectory.llm import create_async_trajectory_llm_as_judge, TRAJECTORY_ACCURACY_PROMPT
   from agentevals.trajectory.match import create_async_trajectory_match_evaluator
 
@@ -258,21 +247,20 @@ All `agentevals` evaluators support Python asyncio. Async versions are available
       evaluation = await async_judge(outputs=result["messages"])
       assert evaluation["score"] is True
   ```
-</Accordion>
 
 ## Run evals in LangSmith
 
-For tracking experiments over time, log evaluator results to [LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-langchain-test-evals). First, set the required environment variables:
+For tracking experiments over time, log evaluator results to LangSmith. First, set the required environment variables:
 
-```bash theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```bash
 export LANGSMITH_API_KEY="your_langsmith_api_key"
 export LANGSMITH_TRACING="true"
 ```
 
-LangSmith offers two main approaches for running evaluations: [pytest](/langsmith/pytest) integration and the `evaluate` function.
+LangSmith offers two main approaches for running evaluations: pytest integration and the `evaluate` function.
 
-<Accordion title="Use pytest integration">
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Use pytest integration
+  ```python
   import pytest
   from langsmith import testing as t
   from agentevals.trajectory.llm import create_trajectory_llm_as_judge, TRAJECTORY_ACCURACY_PROMPT
@@ -307,20 +295,19 @@ LangSmith offers two main approaches for running evaluations: [pytest](/langsmit
       )
   ```
 
-  Run the evaluation with pytest:
+Run the evaluation with pytest:
 
-  ```bash theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```bash
   pytest test_trajectory.py --langsmith-output
   ```
-</Accordion>
 
-<Accordion title="Use the evaluate function">
-  Create a [LangSmith dataset](/langsmith/manage-datasets) and use the `evaluate` function. The dataset must have the following schema:
+Use the evaluate function
+Create a LangSmith dataset and use the `evaluate` function. The dataset must have the following schema:
 
-  * **input**: `{"messages": [...]}` input messages to call the agent with.
-  * **output**: `{"messages": [...]}` expected message history in the agent output. For trajectory evaluation, you can choose to keep only assistant messages.
+* **input**: `{"messages": [...]}` input messages to call the agent with.
+* **output**: `{"messages": [...]}` expected message history in the agent output. For trajectory evaluation, you can choose to keep only assistant messages.
 
-  ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```python
   from langsmith import Client
   from agentevals.trajectory.llm import create_trajectory_llm_as_judge, TRAJECTORY_ACCURACY_PROMPT
 
@@ -340,10 +327,7 @@ LangSmith offers two main approaches for running evaluations: [pytest](/langsmit
       evaluators=[trajectory_evaluator]
   )
   ```
-</Accordion>
 
-<Tip>
-  To learn more about evaluating your agent, see the [LangSmith docs](/langsmith/pytest).
-</Tip>
+To learn more about evaluating your agent, see the LangSmith docs.
 
 ***

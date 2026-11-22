@@ -9,35 +9,31 @@ url: https://docs.langchain.com/oss/python/langchain/mcp
 
 > Connect LangChain agents to MCP servers with the MCPAdapter, built on FastMCP.
 
-[Model Context Protocol (MCP)](https://modelcontextprotocol.io) is an open protocol that standardizes how applications provide tools and context to language models. LangChain agents call tools defined on MCP servers through [`MCPAdapter`](https://reference.langchain.com/python/langchain/mcp/adapter/MCPAdapter), which discovers a server's tools and adapts them into LangChain tools you can pass straight to [`create_agent`](https://reference.langchain.com/python/langchain/agents/factory/create_agent).
+Model Context Protocol (MCP) is an open protocol that standardizes how applications provide tools and context to language models. LangChain agents call tools defined on MCP servers through `MCPAdapter`, which discovers a server's tools and adapts them into LangChain tools you can pass straight to `create_agent`.
 
-[`MCPAdapter`](https://reference.langchain.com/python/langchain/mcp/adapter/MCPAdapter) is built on [FastMCP](https://gofastmcp.com), which handles transport inference, protocol negotiation, connection management, and authentication. This section covers the LangChain-specific layer and links out to the FastMCP client documentation for the connection details underneath.
+`MCPAdapter` is built on FastMCP, which handles transport inference, protocol negotiation, connection management, and authentication. This section covers the LangChain-specific layer and links out to the FastMCP client documentation for the connection details underneath.
 
-<Note>
-  The `langchain.mcp` namespace requires `langchain[mcp]>=1.4.0` and is in beta. Importing from it raises a `LangChainBetaWarning` once per process. The API may change.
+The `langchain.mcp` namespace requires `langchain[mcp]>=1.4.0` and is in beta. Importing from it raises a `LangChainBetaWarning` once per process. The API may change.
 
-  If you used MCP before v1.4.0, see [Migrate from `langchain-mcp-adapters`](/oss/python/migrate/langchain-mcp-adapters).
-</Note>
+If you used MCP before v1.4.0, see Migrate from `langchain-mcp-adapters`.
 
 ## Install
 
 Install LangChain with the `mcp` extra, which pulls in FastMCP:
 
-<CodeGroup>
-  ```bash pip theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```bash pip
   pip install "langchain[mcp]"
   ```
 
-  ```bash uv theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+  ```bash uv
   uv add "langchain[mcp]"
   ```
-</CodeGroup>
 
 ## Quickstart
 
-Open an [`MCPAdapter`](https://reference.langchain.com/python/langchain/mcp/adapter/MCPAdapter), discover the server's tools with `list_tools()`, and build the agent inside the context. The tools hold the client, so the agent stays usable after the context exits:
+Open an `MCPAdapter`, discover the server's tools with `list_tools()`, and build the agent inside the context. The tools hold the client, so the agent stays usable after the context exits:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langchain.agents import create_agent
 from langchain.mcp import MCPAdapter
 
@@ -51,9 +47,9 @@ async def main():
 
 ## Transports
 
-[`MCPAdapter`](https://reference.langchain.com/python/langchain/mcp/adapter/MCPAdapter) infers the transport from the target you hand it, so the only thing that changes between an in-process server, a local script over stdio, and a remote URL is the target itself:
+`MCPAdapter` infers the transport from the target you hand it, so the only thing that changes between an in-process server, a local script over stdio, and a remote URL is the target itself:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from pathlib import Path
 
 from langchain.mcp import MCPAdapter
@@ -72,29 +68,22 @@ A target can be any of the following:
 
 * **An `http`/`https` URL** (`str`): reached over streamable HTTP.
 * **A script path** (`Path`): launched as a subprocess over stdio.
-* **A transport object** (`StreamableTransport`): a pre-configured transport object. See [Client Transports](https://gofastmcp.com/clients/transports).
+* **A transport object** (`StreamableTransport`): a pre-configured transport object. See Client Transports.
 * **An in-process `FastMCP` server**: connected in-memory, with no subprocess or socket.
-* **An `MCPConfig` dict** (`{"mcpServers": {...}}`): several servers behind one adapter. See [Connections](/oss/python/langchain/mcp/connections#multiple-servers).
-* **A prebuilt `fastmcp.Client`**: for full control over transport, [caching](https://gofastmcp.com/clients/client#response-caching), and [protocol negotiation](https://gofastmcp.com/clients/client#protocol-negotiation).
+* **An `MCPConfig` dict** (`{"mcpServers": {...}}`): several servers behind one adapter. See Connections.
+* **A prebuilt `fastmcp.Client`**: for full control over transport, caching, and protocol negotiation.
 
-<Warning>
-  A `str` target must be an `http` or `https` URL. FastMCP resolves a string by testing it as a filesystem path before testing it as a URL, so a string naming an existing `.py` or `.js` file would launch that file as a subprocess. Because strings are the form a target most often arrives in from configuration or from a model, [`MCPAdapter`](https://reference.langchain.com/python/langchain/mcp/adapter/MCPAdapter) rejects strings that don't match the shape of a URL.
-</Warning>
+A `str` target must be an `http` or `https` URL. FastMCP resolves a string by testing it as a filesystem path before testing it as a URL, so a string naming an existing `.py` or `.js` file would launch that file as a subprocess. Because strings are the form a target most often arrives in from configuration or from a model, `MCPAdapter` rejects strings that don't match the shape of a URL.
 
 ## Next steps
 
-<CardGroup cols={2}>
-  <Card title="Connections" icon="plug" href="/oss/python/langchain/mcp/connections">
+Connections
     Connection lifecycle, multiple servers, protocol eras, and caching.
-  </Card>
 
-  <Card title="Authentication" icon="lock" href="/oss/python/langchain/mcp/auth">
+Authentication
     Bearer tokens, OAuth 2.1, and per-user server auth.
-  </Card>
 
-  <Card title="Tools" icon="tool" href="/oss/python/langchain/mcp/tools">
+Tools
     Load MCP tools into agents, control their execution, and handle their outputs.
-  </Card>
-</CardGroup>
 
 ***

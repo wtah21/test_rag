@@ -9,9 +9,9 @@ url: https://docs.langchain.com/oss/python/langgraph/agentic-rag
 
 > Build a custom retrieval agent with LangGraph that decides when to search a vector store or respond directly.
 
-Build a [retrieval](/oss/python/deepagents/retrieval) agent with LangGraph that decides when to search a vector store versus answering the user directly.
+Build a retrieval agent with LangGraph that decides when to search a vector store versus answering the user directly.
 
-LangChain offers built-in [agent](/oss/python/langchain/agents) implementations built on [LangGraph](/oss/python/langgraph/overview) primitives. When you need deeper customization, implement the agent directly in LangGraph. This tutorial walks through one retrieval-agent pattern.
+LangChain offers built-in agent implementations built on LangGraph primitives. When you need deeper customization, implement the agent directly in LangGraph. This tutorial walks through one retrieval-agent pattern.
 
 In this tutorial you will:
 
@@ -19,27 +19,25 @@ In this tutorial you will:
 2. Index those documents for semantic search and create a retriever tool for the agent.
 3. Build an agentic RAG system that can decide when to use the retriever tool.
 
-<img src="https://mintcdn.com/langchain-5e9cc07a/I6RpA28iE233vhYX/images/langgraph-hybrid-rag-tutorial.png?fit=max&auto=format&n=I6RpA28iE233vhYX&q=85&s=855348219691485642b22a1419939ea7" alt="Hybrid RAG" width="1615" height="589" data-path="images/langgraph-hybrid-rag-tutorial.png" />
-
 ### Concepts
 
 This tutorial covers the following concepts:
 
-* [Retrieval](/oss/python/deepagents/retrieval) using
-  * [document loaders](/oss/python/integrations/document_loaders),
-  * [text splitters](/oss/python/integrations/splitters), [embeddings](/oss/python/integrations/embeddings), and
-  * [vector stores](/oss/python/integrations/vectorstores)
-* The LangGraph [Graph API](/oss/python/langgraph/graph-api), including state, nodes, edges, and conditional edges.
+* Retrieval using
+* document loaders,
+* text splitters, embeddings, and
+* vector stores
+* The LangGraph Graph API, including state, nodes, edges, and conditional edges.
 
 ## Setup
 
 Install the required packages and set your API keys:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 pip install -U langgraph langchain langchain-openai langchain-text-splitters beautifulsoup4 requests
 ```
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import getpass
 import os
 
@@ -54,17 +52,17 @@ _set_env("OPENAI_API_KEY")
 
 ### Set up LangSmith
 
-RAG applications run retrieval and generation in sequence. When you run the examples in this tutorial, [LangSmith](/langsmith/observability) logs a trace for each query so you can inspect retrieval, tool calls, and model responses.
-After you [sign up for LangSmith](https://smith.langchain.com?utm_source=docs\&utm_medium=cta\&utm_campaign=langsmith-signup\&utm_content=oss-langgraph-agentic-rag), set your environment variables to start logging traces:
+RAG applications run retrieval and generation in sequence. When you run the examples in this tutorial, LangSmith logs a trace for each query so you can inspect retrieval, tool calls, and model responses.
+After you sign up for LangSmith, set your environment variables to start logging traces:
 
-```shell theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```shell
 export LANGSMITH_TRACING="true"
 export LANGSMITH_API_KEY="..."
 ```
 
 Or, set them in Python:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 import getpass
 import os
 
@@ -72,17 +70,14 @@ os.environ["LANGSMITH_TRACING"] = "true"
 os.environ["LANGSMITH_API_KEY"] = getpass.getpass()
 ```
 
-<Tip>
-  If you are building a production agent, we also recommend you set up [LangSmith Engine](/langsmith/engine) which monitors your traces, detects issues, and proposes fixes.
-</Tip>
+If you are building a production agent, we also recommend you set up LangSmith Engine which monitors your traces, detects issues, and proposes fixes.
 
 ## Preprocess documents
 
-<Steps>
-  <Step title="Fetch documents">
-    Use three posts from [Lilian Weng's blog](https://lilianweng.github.io/). Fetch page content with a minimal helper built on `requests` and `BeautifulSoup`.
+Fetch documents
+    Use three posts from Lilian Weng's blog. Fetch page content with a minimal helper built on `requests` and `BeautifulSoup`.
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     import bs4
     import requests
     from langchain_core.documents import Document
@@ -104,12 +99,11 @@ os.environ["LANGSMITH_API_KEY"] = getpass.getpass()
 
     docs = [load_web_page(url) for url in urls]
     ```
-  </Step>
 
-  <Step title="Split documents">
+Split documents
     Split the fetched documents into smaller chunks for indexing into the vector store:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain_text_splitters import RecursiveCharacterTextSplitter
 
     docs_list = [item for sublist in docs for item in sublist]
@@ -120,18 +114,15 @@ os.environ["LANGSMITH_API_KEY"] = getpass.getpass()
     )
     doc_splits = text_splitter.split_documents(docs_list)
     ```
-  </Step>
-</Steps>
 
 ## Create a retriever tool
 
 Index the split documents into a vector store for semantic search.
 
-<Steps>
-  <Step title="Index documents">
+Index documents
     Use an in-memory vector store and OpenAI embeddings:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from functools import lru_cache
 
     from langchain_core.vectorstores import InMemoryVectorStore
@@ -146,12 +137,11 @@ Index the split documents into a vector store for semantic search.
         )
         return vectorstore.as_retriever()
     ```
-  </Step>
 
-  <Step title="Create the retriever tool">
+Create the retriever tool
     Create a retriever tool using the `@tool` decorator:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.tools import tool
 
 
@@ -165,32 +155,28 @@ Index the split documents into a vector store for semantic search.
 
     retriever_tool = retrieve_blog_posts
     ```
-  </Step>
 
-  <Step title="Test the tool">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Test the tool
+    ```python
     retriever_tool.invoke({"query": "types of reward hacking"})
     ```
-  </Step>
-</Steps>
 
 ## Generate a query or respond
 
-With the retriever tool ready, start building the agent as a LangGraph graph. In the [Graph API](/oss/python/langgraph/graph-api), a graph is made of:
+With the retriever tool ready, start building the agent as a LangGraph graph. In the Graph API, a graph is made of:
 
-* **[State](/oss/python/langgraph/graph-api#state)**: Shared data that nodes read and update. This tutorial uses [`MessagesState`](/oss/python/langgraph/graph-api#messagesstate), which stores a `messages` list of [chat messages](/oss/python/langchain/messages).
+* **State**: Shared data that nodes read and update. This tutorial uses `MessagesState`, which stores a `messages` list of chat messages.
 
-* **[Nodes](/oss/python/langgraph/graph-api#nodes)**: Functions that take the current state, run a step (for example, call a model or a tool), and return state updates.
+* **Nodes**: Functions that take the current state, run a step (for example, call a model or a tool), and return state updates.
 
-* **[Edges](/oss/python/langgraph/graph-api#edges)**: Connections that define which node runs next, including [conditional edges](/oss/python/langgraph/graph-api#conditional-edges) that branch based on the state.
+* **Edges**: Connections that define which node runs next, including conditional edges that branch based on the state.
 
 The first node is the agent decision point. Given the conversation so far, the model either answers the user directly or calls the retriever tool when the question needs blog context. That choice is what makes the system agentic rather than a fixed retrieve-then-generate pipeline: retrieval runs only when the model requests it.
 
-<Steps>
-  <Step title="Build the node">
+Build the node
     Build a `generate_query_or_respond` node that calls the model on the current messages and binds the `retriever_tool` with `.bind_tools`:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.chat_models import init_chat_model
     from langgraph.graph import MessagesState
 
@@ -204,27 +190,25 @@ The first node is the agent decision point. Given the conversation so far, the m
         response = response_model.bind_tools([retriever_tool]).invoke(state["messages"])
         return {"messages": [response]}
     ```
-  </Step>
 
-  <Step title="Try a simple greeting">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Try a simple greeting
+    ```python
     input = {"messages": [{"role": "user", "content": "hello!"}]}
     generate_query_or_respond(input)["messages"][-1].pretty_print()
     ```
 
     **Output:**
 
-    ```text wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```text wrap
     ================================== Ai Message ==================================
 
     Hello! How can I help you today?
     ```
-  </Step>
 
-  <Step title="Ask a retrieval question">
+Ask a retrieval question
     Ask a question that requires semantic search:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     input = {
         "messages": [
             {
@@ -238,7 +222,7 @@ The first node is the agent decision point. Given the conversation so far, the m
 
     **Output:**
 
-    ```text wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```text wrap
     ================================== Ai Message ==================================
     Tool Calls:
     retrieve_blog_posts (call_tYQxgfIlnQUDMdtAhdbXNwIM)
@@ -246,18 +230,15 @@ The first node is the agent decision point. Given the conversation so far, the m
     Args:
         query: types of reward hacking
     ```
-  </Step>
-</Steps>
 
 ## Grade documents
 
-A normal edge always sends the graph to the same next node. A [conditional edge](/oss/python/langgraph/graph-api#conditional-edges) chooses the next node at runtime by running a function over the current state. After retrieval, use that pattern to grade whether the documents are relevant: continue to answer generation if they are, or rewrite the question and try again if they are not.
+A normal edge always sends the graph to the same next node. A conditional edge chooses the next node at runtime by running a function over the current state. After retrieval, use that pattern to grade whether the documents are relevant: continue to answer generation if they are, or rewrite the question and try again if they are not.
 
-<Steps>
-  <Step title="Add document grading">
+Add document grading
     Add a `grade_documents` routing function that uses a model with a structured output schema `GradeDocuments`. It returns the name of the next node based on the grading decision (`generate_answer` or `rewrite_question`):
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from typing import Literal
 
     from pydantic import BaseModel, Field
@@ -300,12 +281,11 @@ A normal edge always sends the graph to the same next node. A [conditional edge]
             return "generate_answer"
         return "rewrite_question"
     ```
-  </Step>
 
-  <Step title="Test with irrelevant documents">
+Test with irrelevant documents
     Run this with irrelevant documents in the tool response:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain_core.messages import convert_to_messages
 
     input = {
@@ -332,12 +312,11 @@ A normal edge always sends the graph to the same next node. A [conditional edge]
     }
     grade_documents(input)
     ```
-  </Step>
 
-  <Step title="Test with relevant documents">
+Test with relevant documents
     Confirm that relevant documents are classified as such:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     input = {
         "messages": convert_to_messages(
             [
@@ -366,18 +345,15 @@ A normal edge always sends the graph to the same next node. A [conditional edge]
     }
     grade_documents(input)
     ```
-  </Step>
-</Steps>
 
 ## Rewrite the question
 
 If the grader marks the retrieved documents as irrelevant, the graph should not answer from that context. Instead, rewrite the original user question into a clearer search query, then send control back to the generate-query-or-respond node so the agent can retrieve again. This retry loop is how the agent recovers from a weak first retrieval instead of stopping or hallucinating an answer.
 
-<Steps>
-  <Step title="Build the rewrite node">
+Build the rewrite node
     Build the `rewrite_question` node to improve the original user question when retrieval misses:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     from langchain.messages import HumanMessage
 
     REWRITE_PROMPT = (
@@ -397,10 +373,9 @@ If the grader marks the retrieved documents as irrelevant, the graph should not 
         response = response_model.invoke([{"role": "user", "content": prompt}])
         return {"messages": [HumanMessage(content=response.content)]}
     ```
-  </Step>
 
-  <Step title="Try it out">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Try it out
+    ```python
     input = {
         "messages": convert_to_messages(
             [
@@ -430,21 +405,18 @@ If the grader marks the retrieved documents as irrelevant, the graph should not 
 
     **Output:**
 
-    ```text wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```text wrap
     What are the different types of reward hacking described by Lilian Weng, and how does she explain them?
     ```
-  </Step>
-</Steps>
 
 ## Generate an answer
 
 When the grader accepts the retrieved documents, the graph moves to answer generation. This node is the classic RAG step: combine the original user question with the tool message that holds the retrieved context, then ask the model to produce a grounded reply. Keep the prompt tight so the model answers from the provided context instead of inventing details.
 
-<Steps>
-  <Step title="Build the answer node">
+Build the answer node
     Build the `generate_answer` node to produce the final reply from the question and retrieved context:
 
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```python
     GENERATE_PROMPT = (
         "You are an assistant for question-answering tasks. "
         "Use the following pieces of retrieved context to answer the question. "
@@ -465,10 +437,9 @@ When the grader accepts the retrieved documents, the graph moves to answer gener
         response = response_model.invoke([{"role": "user", "content": prompt}])
         return {"messages": [response]}
     ```
-  </Step>
 
-  <Step title="Try it">
-    ```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+Try it
+    ```python
     input = {
         "messages": convert_to_messages(
             [
@@ -502,13 +473,11 @@ When the grader accepts the retrieved documents, the graph moves to answer gener
 
     **Output:**
 
-    ```text wrap theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+    ```text wrap
     ================================== Ai Message ==================================
 
     Lilian Weng categorizes reward hacking into two types: environment or goal misspecification, and reward tampering. She considers reward hacking as a broad concept that includes both of these categories. Reward hacking occurs when an agent exploits flaws or ambiguities in the reward function to achieve high rewards without performing the intended behaviors.
     ```
-  </Step>
-</Steps>
 
 ## Assemble the graph
 
@@ -516,13 +485,13 @@ Assemble the nodes and edges into a complete graph:
 
 * Start with `generate_query_or_respond` and determine whether to call `retriever_tool`.
 * Route to the next step based on whether the model made tool calls:
-  * If `generate_query_or_respond` returned `tool_calls`, call `retriever_tool` to retrieve context.
-  * Otherwise, respond directly to the user.
+* If `generate_query_or_respond` returned `tool_calls`, call `retriever_tool` to retrieve context.
+* Otherwise, respond directly to the user.
 * Grade retrieved document content for relevance to the question (`grade_documents`) and route to the next step:
-  * If not relevant, rewrite the question using `rewrite_question` and then call `generate_query_or_respond` again.
-  * If relevant, proceed to `generate_answer` and generate the final response using the [ToolMessage](https://reference.langchain.com/python/langchain-core/messages/tool/ToolMessage) with the retrieved document context.
+* If not relevant, rewrite the question using `rewrite_question` and then call `generate_query_or_respond` again.
+* If relevant, proceed to `generate_answer` and generate the final response using the ToolMessage with the retrieved document context.
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
 
@@ -571,19 +540,17 @@ graph = workflow.compile()
 
 Visualize the graph:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 from IPython.display import Image, display
 
 display(Image(graph.get_graph().draw_mermaid_png()))
 ```
 
-<img src="https://mintcdn.com/langchain-5e9cc07a/-_xGPoyjhyiDWTPJ/oss/images/agentic-rag-output.png?fit=max&auto=format&n=-_xGPoyjhyiDWTPJ&q=85&s=ddedbd57514888e614ece260092201df" alt="Agentic RAG graph" style={{ height: "800px" }} width="1245" height="1395" data-path="oss/images/agentic-rag-output.png" />
-
 ## Run the agentic RAG
 
 Test the complete graph by running it with a question:
 
-```python theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```python
 def run_agentic_rag() -> None:
     for chunk in graph.stream(
         {
@@ -604,9 +571,8 @@ def run_agentic_rag() -> None:
 
 ## See also
 
-* [Retrieval](/oss/python/langchain/retrieval)
-* [Graph API](/oss/python/langgraph/graph-api)
-* [Agents](/oss/python/langchain/agents)
-* [Build a RAG agent](/oss/python/deepagents/rag)
-* [Build a semantic search engine](/oss/python/langchain/knowledge-base)
-
+* Retrieval
+* Graph API
+* Agents
+* Build a RAG agent
+* Build a semantic search engine

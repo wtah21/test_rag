@@ -13,7 +13,7 @@ LangChain's power comes from how its components work together to create sophisti
 
 The diagram below shows how LangChain's major components connect to form complete AI applications:
 
-```mermaid theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```mermaid
 graph TD
     %% Input processing
     subgraph "📥 Input processing"
@@ -82,19 +82,19 @@ LangChain organizes components into these main categories:
 
 | Category                                                             | Purpose                     | Key Components                      | Use Cases                                          |
 | -------------------------------------------------------------------- | --------------------------- | ----------------------------------- | -------------------------------------------------- |
-| **[Models](/oss/python/langchain/models)**                           | AI reasoning and generation | Chat models, LLMs, Embedding models | Text generation, reasoning, semantic understanding |
-| **[Tools](/oss/python/langchain/tools)**                             | External capabilities       | APIs, databases, etc.               | Web search, data access, computations              |
-| **[Agents](/oss/python/langchain/agents)**                           | Orchestration and reasoning | ReAct agents, tool calling agents   | Nondeterministic workflows, decision making        |
-| **[Memory](/oss/python/langchain/short-term-memory)**                | Context preservation        | Message history, custom state       | Conversations, stateful interactions               |
-| **[Retrievers](/oss/python/integrations/retrievers)**                | Information access          | Vector retrievers, web retrievers   | RAG, knowledge base search                         |
-| **[Document processing](/oss/python/integrations/document_loaders)** | Data ingestion              | Loaders, splitters, transformers    | PDF processing, web scraping                       |
-| **[Vector Stores](/oss/python/integrations/vectorstores)**           | Semantic search             | Chroma, Pinecone, FAISS             | Similarity search, embeddings storage              |
+| **Models**                           | AI reasoning and generation | Chat models, LLMs, Embedding models | Text generation, reasoning, semantic understanding |
+| **Tools**                             | External capabilities       | APIs, databases, etc.               | Web search, data access, computations              |
+| **Agents**                           | Orchestration and reasoning | ReAct agents, tool calling agents   | Nondeterministic workflows, decision making        |
+| **Memory**                | Context preservation        | Message history, custom state       | Conversations, stateful interactions               |
+| **Retrievers**                | Information access          | Vector retrievers, web retrievers   | RAG, knowledge base search                         |
+| **Document processing** | Data ingestion              | Loaders, splitters, transformers    | PDF processing, web scraping                       |
+| **Vector Stores**           | Semantic search             | Chroma, Pinecone, FAISS             | Similarity search, embeddings storage              |
 
 ## Common patterns
 
 ### RAG (Retrieval-Augmented generation)
 
-```mermaid theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```mermaid
 graph LR
     A[User question] --> B[Retriever]
     B --> C[Relevant docs]
@@ -113,7 +113,7 @@ graph LR
 
 ### Agent with tools
 
-```mermaid theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```mermaid
 graph LR
     A[User request] --> B[Agent]
     B --> C{Need tool?}
@@ -135,7 +135,7 @@ graph LR
 
 ### Multi-agent system
 
-```mermaid theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+```mermaid
 graph LR
     A[Complex Task] --> B[Supervisor agent]
     B --> C[Specialist agent 1]
@@ -156,8 +156,8 @@ graph LR
 
 ## Learn more
 
-* [Creating agents](/oss/python/langchain/agents)
-* [Working with tools](/oss/python/langchain/tools)
-* [Browse integrations](/oss/python/integrations/providers/overview)
+* Creating agents
+* Working with tools
+* Browse integrations
 
 ***

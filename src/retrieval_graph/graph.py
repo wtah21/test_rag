@@ -18,7 +18,7 @@
   是纯词匹配，中文分词打不中英文词表；整句英译有功能词稀释，故抽关键词），
   再对有效问题做单 query 混合检索：
   稠密路用中文有效问题（BGE-M3 多语言可跨语种命中英文语料），稀疏路用英译
-  （BM25），RRF 融合后按 rerank_candidates（默认 20）取候选、再由 cross-encoder
+  （BM25），RRF 融合后按 rerank_candidates（默认 30）取候选、再由 cross-encoder
   重排取前 rerank_top_n（默认 4）条作为最终 context（关闭重排时取 context_top_k
   条；不再生成多 query、不再做 step/query 级配额合并）。
 
@@ -380,7 +380,7 @@ async def retrieve_context(state: AgentState, config: RunnableConfig) -> dict[st
     判别频率，因此先用语言模型把有效问题抽取成对检索有判别力的英文关键词
     （含原问中逐字出现的英文专名与关键概念的英文译词），抽到关键词即启用
     稀疏路并把关键词串送入 BM25；纯中文且无可译判别词时关键词为空，关闭
-    稀疏路仅用稠密检索。RRF 融合后按 rerank_candidates（默认 20）取候选，再由
+    稀疏路仅用稠密检索。RRF 融合后按 rerank_candidates（默认 30）取候选，再由
     cross-encoder 重排取前 rerank_top_n（默认 4）条写入 documents 作为最终
     context（关闭重排时取 context_top_k 条），供 grade_documents 评判与 respond 生成回答
     ——不再生成多 query，不再做 query/step 级配额合并。关键词抽取失败时回退
